@@ -223,6 +223,10 @@ int run(struct keylogger_ctx *ctx) {
   struct input_event ev;
   fd_set rfds;
 
+  if (ctx->kb_fds.empty()) {
+    return EXIT_FAILURE;
+  }
+
   while (!must_stop) {
     FD_ZERO(&rfds);
 
