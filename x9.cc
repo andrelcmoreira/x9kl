@@ -246,7 +246,6 @@ int run(struct x9_ctx *ctx) {
 
         if ((ev.type == EV_KEY) && (n_bytes > 0)) {
           try {
-            std::cout << ev.code << std::endl;
             auto ev_handler = handlers.at(ev.code);
 
             ctx->event = ev;
