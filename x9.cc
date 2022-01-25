@@ -222,10 +222,6 @@ int run(struct x9_ctx *ctx) {
   struct input_event ev;
   fd_set rfds;
 
-  if (ctx->kb_fds.empty()) {
-    return EXIT_FAILURE;
-  }
-
   while (!must_stop) {
     FD_ZERO(&rfds);
 
@@ -264,11 +260,15 @@ int run(struct x9_ctx *ctx) {
 void deamonize() {}
 
 int main() {
-  std::signal(SIGINT, sig_handler);
-
   struct x9_ctx ctx = {.is_capslock_on = false,
                        .kb_fds = get_keyboard_fds(),
                        .buffer_cursor = 0};
+
+  if (ctx.kb_fds.empty()) {
+    std::exit(EXIT_FAILURE);
+  }
+
+  std::signal(SIGINT, sig_handler);
 
   int ret = run(&ctx);
   cleanup_ctx(&ctx);
