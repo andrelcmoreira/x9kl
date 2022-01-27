@@ -11,6 +11,7 @@
 #include <iostream>
 #include <map>
 #include <regex>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -246,7 +247,7 @@ int run(struct x9_ctx *ctx) {
 
             ctx->event = ev;
             ev_handler.cb(ctx);
-          } catch (...) {
+          } catch (const std::out_of_range &e) {
             std::cerr << "no event handler for key " << ev.code << std::endl;
           }
         }
