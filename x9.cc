@@ -111,7 +111,7 @@ std::vector<std::string> get_event_files() {
   std::string line;
   std::smatch match;
 
-  for (int i = 0; std::getline(file, line); i++) {
+  while (std::getline(file, line)) {
     if (std::regex_search(line, match, kb_regex)) {
       content.emplace_back(match[1]);
     }
