@@ -43,7 +43,6 @@ void handle_shift(struct x9_ctx *);
 volatile std::sig_atomic_t must_stop{0};
 
 /* key mapping */
-// TODO: add more keys (consider keyboard layout)
 static const std::map<int, struct key_event_handler> handlers{
     {KEY_0, {'0', ')', handle_key}},
     {KEY_1, {'1', '!', handle_key}},
@@ -94,7 +93,11 @@ static const std::map<int, struct key_event_handler> handlers{
     {KEY_RIGHT, {'\0', '\0', handle_arrow}},
     {KEY_LEFT, {'\0', '\0', handle_arrow}},
     {KEY_LEFTSHIFT, {'\0', '\0', handle_shift}},
-    {KEY_RO, {'/', '?', handle_key}}};
+    {KEY_RO, {'/', '?', handle_key}},
+    {KEY_GRAVE, {'\'', '\"', handle_key}},
+    {KEY_102ND, {'\\', '|', handle_key}},
+    {KEY_RIGHTBRACE, {'[', '{', handle_key}},
+    {KEY_BACKSLASH, {']', '}', handle_key}}};
 
 void sig_handler(int sig_num) { must_stop = 1; }
 
