@@ -108,15 +108,18 @@ void cleanup_ctx(struct x9_ctx *ctx) {
 }
 
 std::vector<std::string> get_event_files() {
-  std::ifstream file{"/proc/bus/input/devices"};
-  std::regex kb_regex{"H: Handlers=sysrq kbd (.+?) leds"};
   std::vector<std::string> content;
-  std::string line;
-  std::smatch match;
-
-  while (std::getline(file, line)) {
-    if (std::regex_search(line, match, kb_regex)) {
-      content.emplace_back(match[1]);
+   
+  {
+    std::ifstream file{"/proc/bus/input/devices"};
+    std::regex kb_regex{"H: Handlers=sysrq kbd (.+?) leds"};
+    std::string line;
+    std::smatch match;
+ 
+    while (std::getline(file, line)) {
+      if (std::regex_search(line, match, kb_regex)) {
+        content.emplace_back(match[1]);
+      }
     }
   }
 
