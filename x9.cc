@@ -275,7 +275,9 @@ void run(struct x9_ctx *ctx) {
             ctx->event = ev;
             ev_handler.cb(ctx);
           } catch (const std::out_of_range &e) {
+#ifdef DEBUG
             std::cerr << "no event handler for key " << ev.code << std::endl;
+#endif  // DEBUG
           }
         }
       }
