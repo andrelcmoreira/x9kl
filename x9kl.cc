@@ -15,7 +15,9 @@
 #include <string>
 #include <vector>
 
+#ifndef LOGS_DIRECTORY
 #define LOGS_DIRECTORY "/tmp/.x9kl/"
+#endif  // LOGS_DIRECTORY
 
 #ifdef DEBUG
 #define X9KL_DEBUG(...) std::fprintf(stdout, "DEBUG: " __VA_ARGS__)
