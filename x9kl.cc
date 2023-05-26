@@ -26,9 +26,9 @@
 struct x9kl_ctx_t {
   bool is_capslock_on;
   bool is_shift_pressed;
+  int buffer_cursor;
   std::vector<int> kb_fds;
   std::vector<char> kb_buffer;
-  int buffer_cursor;
   struct input_event event;
 };
 
