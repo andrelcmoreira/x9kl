@@ -15,10 +15,6 @@
 #include <string>
 #include <vector>
 
-#ifndef LOGS_DIRECTORY
-#define LOGS_DIRECTORY "/tmp/.x9kl/"
-#endif  // LOGS_DIRECTORY
-
 #ifdef DEBUG
 #define X9KL_DEBUG(...) std::fprintf(stdout, "DEBUG: " __VA_ARGS__)
 #define X9KL_ERROR(...) std::fprintf(stderr, "ERROR: " __VA_ARGS__)
@@ -162,7 +158,7 @@ static int initialize_ctx(x9kl_ctx_t *ctx) {
     return 1;
   }
 
-  mkdir(LOGS_DIRECTORY, S_IRWXU | S_IRWXG | S_IRWXO);
+  mkdir(LOGS_DIR, S_IRWXU | S_IRWXG | S_IRWXO);
 
   return 0;
 }
@@ -206,7 +202,7 @@ void handle_enter(x9kl_ctx_t *ctx) {
                   std::localtime(&now));
   }
 
-  std::ofstream log_file{std::string{LOGS_DIRECTORY} + "log_" + date + ".txt",
+  std::ofstream log_file{std::string{LOGS_DIR} + "log_" + date + ".txt",
                          std::ios::app};
 
   log_file << "[" << timestamp << "] ";

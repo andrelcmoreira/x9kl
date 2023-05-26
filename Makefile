@@ -1,6 +1,7 @@
 CC = g++
-CFLAGS = -O1
 OUT = x9kl
+LOGS_DIR ?= $(PWD)/.$(OUT)/
+CFLAGS = -O1 -D LOGS_DIR=\"$(LOGS_DIR)\"
 
 .PHONY: daemon clean debug
 
