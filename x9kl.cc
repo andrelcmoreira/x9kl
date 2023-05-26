@@ -143,10 +143,6 @@ static std::vector<int> get_keyboard_fds(void) {
 }
 
 static int initialize_ctx(x9kl_ctx_t *ctx) {
-  if (!ctx) {
-    return 1;
-  }
-
   std::memset(ctx, 0, sizeof(x9kl_ctx_t));
 
   ctx->is_capslock_on = false;
@@ -256,7 +252,7 @@ void handle_arrow(x9kl_ctx_t *ctx) {
                                                  : (ctx->buffer_cursor + 1);
 }
 
-void mainloop(x9kl_ctx_t *ctx) {
+static void mainloop(x9kl_ctx_t *ctx) {
   struct input_event ev;
   fd_set rfds;
 
