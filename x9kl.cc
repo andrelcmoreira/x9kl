@@ -145,6 +145,8 @@ static std::vector<int> get_keyboard_fds(void) {
 static int initialize_ctx(x9kl_ctx_t *ctx) {
   std::memset(ctx, 0, sizeof(x9kl_ctx_t));
 
+  X9KL_DEBUG("logs dir: %s\n", LOGS_DIR);
+
   ctx->is_capslock_on = false;
   ctx->buffer_cursor = 0;
   ctx->kb_fds = get_keyboard_fds();
@@ -338,9 +340,6 @@ static void run_as_daemon(void) {
 
 int main(void) {
 #ifdef DEBUG
-  std::setvbuf(stdout, nullptr, _IONBF, 0);
-  std::setvbuf(stderr, nullptr, _IONBF, 0);
-
   run();
 #else
   run_as_daemon();
