@@ -1,16 +1,16 @@
 CC = g++
 BIN = x9kl
 LOGS_DIR ?= $(PWD)/.$(BIN)/
-CFLAGS_DAEMON = -s -O1 -D LOGS_DIR=\"$(LOGS_DIR)\"
-CFLAGS_DEBUG = -g -D DEBUG=ON -D LOGS_DIR=\"$(LOGS_DIR)\"
+CFLAGS = -s -O1 -D LOGS_DIR=\"$(LOGS_DIR)\"
+CFLAGS_DBG = -g -D DEBUG=ON -D LOGS_DIR=\"$(LOGS_DIR)\"
 
-.PHONY: clean daemon debug
+.PHONY: clean x9kl x9kl-dbg
 
-daemon:
-	$(CC) $(CFLAGS_DAEMON) $(BIN).cc -o $(BIN)
+$(BIN): $(BIN).cc
+	$(CC) $(CFLAGS) $(BIN).cc -o $(BIN)
 
-debug:
-	$(CC) $(CFLAGS_DEBUG) $(BIN).cc -o $(BIN)
+$(BIN)-dbg: $(BIN).cc
+	$(CC) $(CFLAGS_DBG) $(BIN).cc -o $(BIN)
 
 clean:
 	@rm -rf $(LOGS_DIR)
