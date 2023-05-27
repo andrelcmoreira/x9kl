@@ -7,10 +7,10 @@ CFLAGS_DBG = -g -D DEBUG=ON -D LOGS_DIR=\"$(LOGS_DIR)\"
 .PHONY: clean x9kl x9kl-dbg
 
 $(BIN): $(BIN).cc
-	$(CC) $(CFLAGS) $(BIN).cc -o $(BIN)
+	$(CC) $(CFLAGS) $< -o $(BIN)
 
 $(BIN)-dbg: $(BIN).cc
-	$(CC) $(CFLAGS_DBG) $(BIN).cc -o $(BIN)
+	$(CC) $(CFLAGS_DBG) $< -o $(BIN)
 
 clean:
 	@rm -rf $(LOGS_DIR)
