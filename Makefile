@@ -1,6 +1,6 @@
 CC = g++
 BIN = x9kl
-LOGS_DIR ?= $(PWD)/.$(BIN)/
+LOGS_DIR ?= $(PWD)/.$(BIN)
 CFLAGS = -s -O1 -D LOGS_DIR=\"$(LOGS_DIR)\"
 CFLAGS_DBG = -g -D DEBUG=ON -D LOGS_DIR=\"$(LOGS_DIR)\"
 

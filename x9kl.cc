@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <fcntl.h>
 #include <linux/input.h>
 #include <sys/select.h>
@@ -119,7 +120,8 @@ static std::vector<std::string> get_event_files(void) {
       std::smatch match;
 
       if (std::regex_search(line, match, kb_regex)) {
-        X9KL_DEBUG("keyboard found, event file: '%s'\n", match[1].str());
+        X9KL_DEBUG("keyboard found, event file: '%s'\n",
+                   match[1].str().c_str());
         content.emplace_back(match[1]);
       }
     }
@@ -156,7 +158,10 @@ static int initialize_ctx(x9kl_ctx_t *ctx) {
     return 1;
   }
 
-  mkdir(LOGS_DIR, S_IRWXU | S_IRWXG | S_IRWXO);
+  if (mkdir(LOGS_DIR, S_IRWXU | S_IRWXG | S_IRWXO)) {
+    X9KL_ERROR("fail to create logs dir, error: %s\n", strerror(errno));
+    return 1;
+  }
 
   return 0;
 }
@@ -185,7 +190,7 @@ void handle_key(x9kl_ctx_t *ctx) {
 }
 
 void handle_enter(x9kl_ctx_t *ctx) {
-  char date[11], timestamp[9];
+  char date[9]{0}, timestamp[9]{0};
 
   if (!ctx->event.value || ctx->kb_buffer.empty()) {
     return;
@@ -200,7 +205,7 @@ void handle_enter(x9kl_ctx_t *ctx) {
                   std::localtime(&now));
   }
 
-  std::ofstream log_file{std::string{LOGS_DIR} + "log_" + date + ".txt",
+  std::ofstream log_file{std::string{LOGS_DIR} + "/log_" + date + ".txt",
                          std::ios::app};
 
   log_file << "[" << timestamp << "] ";
@@ -292,7 +297,7 @@ static void mainloop(x9kl_ctx_t *ctx) {
     }
   }
 
-  X9KL_DEBUG("finishing daemon\n");
+  X9KL_DEBUG("finishing mainloop\n");
 }
 
 static void run(void) {
