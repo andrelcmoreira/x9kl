@@ -14,4 +14,4 @@ $(BIN)-dbg: $(BIN).cc
 
 clean:
 	@rm -rf $(LOGS_DIR)
-	@rm -f $(OUT)
+	@rm -f $(BIN)
