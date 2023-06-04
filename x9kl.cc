@@ -27,6 +27,7 @@
 struct x9kl_ctx_t {
   bool is_capslock_on;
   bool is_shift_pressed;
+  bool is_altgr_pressed;
   uint32_t buffer_cursor;
   std::vector<int> kb_fds;
   std::vector<char> kb_buffer;
@@ -34,6 +35,7 @@ struct x9kl_ctx_t {
 
   x9kl_ctx_t() : is_capslock_on{false},
                  is_shift_pressed{false},
+                 is_altgr_pressed{false},
                  buffer_cursor{0} {
     memset(&event, 0, sizeof(struct input_event));
   }
@@ -42,6 +44,7 @@ struct x9kl_ctx_t {
 struct key_event_handler_t {
   char key_char;
   char key_char_shift;
+  char key_char_altgr;
   void (*cb)(x9kl_ctx_t *);
 };
 
@@ -52,65 +55,67 @@ static void handle_capslock(x9kl_ctx_t *);
 static void handle_delete(x9kl_ctx_t *);
 static void handle_arrow(x9kl_ctx_t *);
 static void handle_shift(x9kl_ctx_t *);
+static void handle_altgr(x9kl_ctx_t *);
 
 volatile std::sig_atomic_t must_stop{0};
 
 // key mapping
 static const std::map<int, key_event_handler_t> handlers{
-    {KEY_0, {'0', ')', handle_key}},
-    {KEY_1, {'1', '!', handle_key}},
-    {KEY_2, {'2', '@', handle_key}},
-    {KEY_3, {'3', '#', handle_key}},
-    {KEY_4, {'4', '$', handle_key}},
-    {KEY_5, {'5', '%', handle_key}},
-    {KEY_6, {'6', '\0', handle_key}},  // TODO
-    {KEY_7, {'7', '&', handle_key}},
-    {KEY_8, {'8', '*', handle_key}},
-    {KEY_9, {'9', '(', handle_key}},
-    {KEY_A, {'a', 'A', handle_key}},
-    {KEY_B, {'b', 'B', handle_key}},
-    {KEY_C, {'c', 'C', handle_key}},
-    {KEY_D, {'d', 'D', handle_key}},
-    {KEY_E, {'e', 'E', handle_key}},
-    {KEY_F, {'f', 'F', handle_key}},
-    {KEY_G, {'g', 'G', handle_key}},
-    {KEY_H, {'h', 'H', handle_key}},
-    {KEY_I, {'i', 'I', handle_key}},
-    {KEY_J, {'j', 'J', handle_key}},
-    {KEY_K, {'k', 'K', handle_key}},
-    {KEY_L, {'l', 'L', handle_key}},
-    {KEY_M, {'m', 'M', handle_key}},
-    {KEY_N, {'n', 'N', handle_key}},
-    {KEY_O, {'o', 'O', handle_key}},
-    {KEY_P, {'p', 'P', handle_key}},
-    {KEY_Q, {'q', 'Q', handle_key}},
-    {KEY_R, {'r', 'R', handle_key}},
-    {KEY_S, {'s', 'S', handle_key}},
-    {KEY_T, {'t', 'T', handle_key}},
-    {KEY_U, {'u', 'U', handle_key}},
-    {KEY_V, {'v', 'V', handle_key}},
-    {KEY_W, {'w', 'W', handle_key}},
-    {KEY_X, {'x', 'X', handle_key}},
-    {KEY_Y, {'y', 'Y', handle_key}},
-    {KEY_Z, {'z', 'Z', handle_key}},
-    {KEY_COMMA, {',', '<', handle_key}},
-    {KEY_DOT, {'.', '>', handle_key}},
-    {KEY_MINUS, {'-', '_', handle_key}},
-    {KEY_SEMICOLON, {';', ':', handle_key}},
-    {KEY_EQUAL, {'=', '+', handle_key}},
-    {KEY_SPACE, {' ', '\0', handle_key}},
-    {KEY_ENTER, {'\0', '\0', handle_enter}},
-    {KEY_BACKSPACE, {'\0', '\0', handle_backspace}},
-    {KEY_CAPSLOCK, {'\0', '\0', handle_capslock}},
-    {KEY_DELETE, {'\0', '\0', handle_delete}},
-    {KEY_RIGHT, {'\0', '\0', handle_arrow}},
-    {KEY_LEFT, {'\0', '\0', handle_arrow}},
-    {KEY_LEFTSHIFT, {'\0', '\0', handle_shift}},
-    {KEY_RO, {'/', '?', handle_key}},
-    {KEY_GRAVE, {'\'', '\"', handle_key}},
-    {KEY_102ND, {'\\', '|', handle_key}},
-    {KEY_RIGHTBRACE, {'[', '{', handle_key}},
-    {KEY_BACKSLASH, {']', '}', handle_key}}};
+    {KEY_0, {'0', ')', '}', handle_key}},
+    {KEY_1, {'1', '!', '\0', handle_key}},
+    {KEY_2, {'2', '@', '\0', handle_key}},
+    {KEY_3, {'3', '#', '\0', handle_key}},
+    {KEY_4, {'4', '$', '\0', handle_key}},
+    {KEY_5, {'5', '%', '\0', handle_key}},
+    {KEY_6, {'6', '\0', '\0', handle_key}},  // TODO
+    {KEY_7, {'7', '&', '{', handle_key}},
+    {KEY_8, {'8', '*', '[', handle_key}},
+    {KEY_9, {'9', '(', ']', handle_key}},
+    {KEY_A, {'a', 'A', '\0', handle_key}},
+    {KEY_B, {'b', 'B', '\0', handle_key}},
+    {KEY_C, {'c', 'C', '\0', handle_key}},
+    {KEY_D, {'d', 'D', '\0', handle_key}},
+    {KEY_E, {'e', 'E', '\0', handle_key}},
+    {KEY_F, {'f', 'F', '\0', handle_key}},
+    {KEY_G, {'g', 'G', '\0', handle_key}},
+    {KEY_H, {'h', 'H', '\0', handle_key}},
+    {KEY_I, {'i', 'I', '\0', handle_key}},
+    {KEY_J, {'j', 'J', '\0', handle_key}},
+    {KEY_K, {'k', 'K', '\0', handle_key}},
+    {KEY_L, {'l', 'L', '\0', handle_key}},
+    {KEY_M, {'m', 'M', '\0', handle_key}},
+    {KEY_N, {'n', 'N', '\0', handle_key}},
+    {KEY_O, {'o', 'O', '\0', handle_key}},
+    {KEY_P, {'p', 'P', '\0', handle_key}},
+    {KEY_Q, {'q', 'Q', '/', handle_key}},
+    {KEY_R, {'r', 'R', '\0', handle_key}},
+    {KEY_S, {'s', 'S', '\0', handle_key}},
+    {KEY_T, {'t', 'T', '\0', handle_key}},
+    {KEY_U, {'u', 'U', '\0', handle_key}},
+    {KEY_V, {'v', 'V', '\0', handle_key}},
+    {KEY_W, {'w', 'W', '?', handle_key}},
+    {KEY_X, {'x', 'X', '\0', handle_key}},
+    {KEY_Y, {'y', 'Y', '\0', handle_key}},
+    {KEY_Z, {'z', 'Z', '\0', handle_key}},
+    {KEY_COMMA, {',', '<', '\0', handle_key}},
+    {KEY_DOT, {'.', '>', '\0', handle_key}},
+    {KEY_MINUS, {'-', '_', '\0', handle_key}},
+    {KEY_SEMICOLON, {';', ':', '\0', handle_key}},
+    {KEY_EQUAL, {'=', '+', '\0', handle_key}},
+    {KEY_SPACE, {' ', '\0', '\0', handle_key}},
+    {KEY_ENTER, {'\0', '\0', '\0', handle_enter}},
+    {KEY_BACKSPACE, {'\0', '\0', '\0', handle_backspace}},
+    {KEY_CAPSLOCK, {'\0', '\0', '\0', handle_capslock}},
+    {KEY_DELETE, {'\0', '\0', '\0', handle_delete}},
+    {KEY_RIGHT, {'\0', '\0', '\0', handle_arrow}},
+    {KEY_LEFT, {'\0', '\0', '\0', handle_arrow}},
+    {KEY_LEFTSHIFT, {'\0', '\0', '\0', handle_shift}},
+    {KEY_RO, {'/', '?', '\0', handle_key}},
+    {KEY_GRAVE, {'\'', '\"', '\0', handle_key}},
+    {KEY_102ND, {'\\', '|', '\0', handle_key}},
+    {KEY_RIGHTBRACE, {'[', '{', '\0', handle_key}},
+    {KEY_RIGHTALT, {'\0', '\0', '\0', handle_altgr}},
+    {KEY_BACKSLASH, {']', '}', '\0', handle_key}}};
 
 static void sig_handler(int sig_num) {
   (void)sig_num;
@@ -164,8 +169,10 @@ static int initialize_x9kl(x9kl_ctx_t *ctx) {
   }
 
   if (mkdir(LOGS_DIR, S_IRWXU | S_IRWXG | S_IRWXO)) {
-    X9KL_ERROR("fail to create logs dir, error: %s\n", strerror(errno));
-    return 1;
+    if (errno != EEXIST) {
+      X9KL_ERROR("fail to create logs dir, error: %s\n", strerror(errno));
+      return 1;
+    }
   }
 
   std::signal(SIGINT, sig_handler);
@@ -187,9 +194,15 @@ void handle_key(x9kl_ctx_t *ctx) {
     return;
   }
 
-  auto key_code = ctx->event.code;
-  auto key_char = ctx->is_shift_pressed ? handlers.at(key_code).key_char_shift
-                                        : handlers.at(key_code).key_char;
+  char key_code = ctx->event.code, key_char;
+
+  if (ctx->is_shift_pressed) {
+    key_char = handlers.at(key_code).key_char_shift;
+  } else if (ctx->is_altgr_pressed) {
+    key_char = handlers.at(key_code).key_char_altgr;
+  } else {
+    key_char = handlers.at(key_code).key_char;
+  }
 
   if (ctx->is_capslock_on && (key_char >= 'a' || key_char <= 'z')) {
     key_char -= 32;
@@ -236,6 +249,10 @@ void handle_capslock(x9kl_ctx_t *ctx) {
 
 void handle_shift(x9kl_ctx_t *ctx) {
   ctx->is_shift_pressed = ctx->event.value;
+}
+
+void handle_altgr(x9kl_ctx_t *ctx) {
+  ctx->is_altgr_pressed = ctx->event.value;
 }
 
 void handle_delete(x9kl_ctx_t *ctx) {
