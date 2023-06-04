@@ -1,7 +1,7 @@
 CC = g++
 BIN = x9kl
 LOGS_DIR ?= $(PWD)/.$(BIN)
-CFLAGS = -s -O1 -D LOGS_DIR=\"$(LOGS_DIR)\"
+CFLAGS = -Wall -Werror -Wextra -Wpedantic -s -O1 -D LOGS_DIR=\"$(LOGS_DIR)\"
 CFLAGS_DBG = -g -D DEBUG=ON -D LOGS_DIR=\"$(LOGS_DIR)\"
 
 .PHONY: clean x9kl x9kl-dbg

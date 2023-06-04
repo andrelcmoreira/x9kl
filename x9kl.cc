@@ -27,10 +27,16 @@
 struct x9kl_ctx_t {
   bool is_capslock_on;
   bool is_shift_pressed;
-  int buffer_cursor;
+  uint32_t buffer_cursor;
   std::vector<int> kb_fds;
   std::vector<char> kb_buffer;
   struct input_event event;
+
+  x9kl_ctx_t() : is_capslock_on{false},
+                 is_shift_pressed{false},
+                 buffer_cursor{0} {
+    memset(&event, 0, sizeof(struct input_event));
+  }
 };
 
 struct key_event_handler_t {
@@ -106,7 +112,11 @@ static const std::map<int, key_event_handler_t> handlers{
     {KEY_RIGHTBRACE, {'[', '{', handle_key}},
     {KEY_BACKSLASH, {']', '}', handle_key}}};
 
-void sig_handler(int sig_num) { must_stop = 1; }
+static void sig_handler(int sig_num) {
+  (void)sig_num;
+
+  must_stop = 1;
+}
 
 static std::vector<std::string> get_event_files(void) {
   std::vector<std::string> content;
@@ -144,15 +154,10 @@ static std::vector<int> get_keyboard_fds(void) {
   return fds;
 }
 
-static int initialize_ctx(x9kl_ctx_t *ctx) {
-  std::memset(ctx, 0, sizeof(x9kl_ctx_t));
-
+static int initialize_x9kl(x9kl_ctx_t *ctx) {
   X9KL_DEBUG("logs dir: %s\n", LOGS_DIR);
 
-  ctx->is_capslock_on = false;
-  ctx->buffer_cursor = 0;
   ctx->kb_fds = get_keyboard_fds();
-
   if (ctx->kb_fds.empty()) {
     X9KL_ERROR("no keyboards found\n");
     return 1;
@@ -162,6 +167,11 @@ static int initialize_ctx(x9kl_ctx_t *ctx) {
     X9KL_ERROR("fail to create logs dir, error: %s\n", strerror(errno));
     return 1;
   }
+
+  std::signal(SIGINT, sig_handler);
+  std::signal(SIGKILL, sig_handler);
+  std::signal(SIGTERM, sig_handler);
+  std::signal(SIGQUIT, sig_handler);
 
   return 0;
 }
@@ -303,15 +313,10 @@ static void mainloop(x9kl_ctx_t *ctx) {
 static void run(void) {
   x9kl_ctx_t ctx;
 
-  if (initialize_ctx(&ctx)) {
+  if (initialize_x9kl(&ctx)) {
     X9KL_ERROR("fail to initialize the context\n");
     std::exit(EXIT_FAILURE);
   }
-
-  std::signal(SIGINT, sig_handler);
-  std::signal(SIGKILL, sig_handler);
-  std::signal(SIGTERM, sig_handler);
-  std::signal(SIGQUIT, sig_handler);
 
   mainloop(&ctx);
   destroy_ctx(&ctx);
