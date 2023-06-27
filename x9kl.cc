@@ -128,12 +128,12 @@ static void add_header_info(std::ofstream &file) {
 }
 
 static void add_timestamp(const tm *time, std::ofstream &file) {
-  std::vector<uint16_t> log_entry;
+  std::vector<uint16_t> timestamp;
 
-  log_entry.emplace_back((time->tm_hour << 8) | time->tm_min);
-  log_entry.emplace_back((time->tm_sec << 8) | 0xff);
+  timestamp.emplace_back((time->tm_hour << 8) | time->tm_min);
+  timestamp.emplace_back((time->tm_sec << 8) | 0xff);
 
-  file.write((const char *)log_entry.data(), log_entry.size() * 2);
+  file.write((const char *)timestamp.data(), timestamp.size() * 2);
 }
 
 static void add_data(const std::vector<uint16_t> &data, std::ofstream &file) {
@@ -234,10 +234,8 @@ static void handle_arrow(x9kl_ctx_t *ctx) {
 
   X9KL_DEBUG("handling arrow key\n");
 
-  auto current_key = ctx->event.code;
-
-  ctx->buffer_cursor = (current_key == KEY_LEFT) ? (ctx->buffer_cursor - 1)
-                                                 : (ctx->buffer_cursor + 1);
+  ctx->buffer_cursor = (ctx->event.code == KEY_LEFT) ? (ctx->buffer_cursor - 1)
+                                                     : (ctx->buffer_cursor + 1);
 }
 
 static void handle_ascii_key(x9kl_ctx_t *ctx) {
