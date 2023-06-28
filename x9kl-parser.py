@@ -66,37 +66,40 @@ class KeyCode(Enum):
 #{KEY_BACKSLASH, {']', '}', '\0', handle_key}}};
 #'''
 KEYMAP = {
-    KeyCode.KEY_ENTER.value: '\n',
-    KeyCode.KEY_A.value: 'a',
-    KeyCode.KEY_B.value: 'b',
-    KeyCode.KEY_C.value: 'c',
-    KeyCode.KEY_D.value: 'd',
-    KeyCode.KEY_E.value: 'e',
-    KeyCode.KEY_F.value: 'f',
-    KeyCode.KEY_G.value: 'g',
-    KeyCode.KEY_H.value: 'h',
-    KeyCode.KEY_I.value: 'i',
-    KeyCode.KEY_J.value: 'j',
-    KeyCode.KEY_K.value: 'k',
-    KeyCode.KEY_L.value: 'l',
-    KeyCode.KEY_L.value: 'l',
-    KeyCode.KEY_M.value: 'm',
-    KeyCode.KEY_N.value: 'n',
-    KeyCode.KEY_O.value: 'o',
-    KeyCode.KEY_P.value: 'p',
-    KeyCode.KEY_Q.value: 'q',
-    KeyCode.KEY_R.value: 'r',
-    KeyCode.KEY_S.value: 's',
-    KeyCode.KEY_T.value: 't',
-    KeyCode.KEY_U.value: 'u',
-    KeyCode.KEY_V.value: 'v',
-    KeyCode.KEY_W.value: 'w',
-    KeyCode.KEY_X.value: 'x',
-    KeyCode.KEY_Y.value: 'y',
-    KeyCode.KEY_Z.value: 'z',
-    KeyCode.KEY_SPACE.value: ' ',
-    KeyCode.KEY_MINUS.value: '-'
+    KeyCode.KEY_A.value: { 'norm': 'a', 'shi': 'A', 'caps': 'A', 'alt': '' },
+    KeyCode.KEY_B.value: { 'norm': 'b', 'shi': 'B', 'caps': 'B', 'alt': '' },
+    KeyCode.KEY_C.value: { 'norm': 'c', 'shi': 'C', 'caps': 'C', 'alt': '' },
+    KeyCode.KEY_D.value: { 'norm': 'd', 'shi': 'D', 'caps': 'D', 'alt': '' },
+    KeyCode.KEY_E.value: { 'norm': 'e', 'shi': 'E', 'caps': 'E', 'alt': '' },
+    KeyCode.KEY_F.value: { 'norm': 'f', 'shi': 'F', 'caps': 'F', 'alt': '' },
+    KeyCode.KEY_G.value: { 'norm': 'g', 'shi': 'G', 'caps': 'G', 'alt': '' },
+    KeyCode.KEY_H.value: { 'norm': 'h', 'shi': 'H', 'caps': 'H', 'alt': '' },
+    KeyCode.KEY_I.value: { 'norm': 'i', 'shi': 'I', 'caps': 'I', 'alt': '' },
+    KeyCode.KEY_J.value: { 'norm': 'j', 'shi': 'J', 'caps': 'J', 'alt': '' },
+    KeyCode.KEY_K.value: { 'norm': 'k', 'shi': 'K', 'caps': 'K', 'alt': '' },
+    KeyCode.KEY_L.value: { 'norm': 'l', 'shi': 'L', 'caps': 'L', 'alt': '' },
+    KeyCode.KEY_M.value: { 'norm': 'm', 'shi': 'M', 'caps': 'M', 'alt': '' },
+    KeyCode.KEY_N.value: { 'norm': 'n', 'shi': 'N', 'caps': 'N', 'alt': '' },
+    KeyCode.KEY_O.value: { 'norm': 'o', 'shi': 'O', 'caps': 'O', 'alt': '' },
+    KeyCode.KEY_P.value: { 'norm': 'p', 'shi': 'P', 'caps': 'P', 'alt': '' },
+    KeyCode.KEY_Q.value: { 'norm': 'q', 'shi': 'Q', 'caps': 'Q', 'alt': '' },
+    KeyCode.KEY_R.value: { 'norm': 'r', 'shi': 'R', 'caps': 'R', 'alt': '' },
+    KeyCode.KEY_S.value: { 'norm': 's', 'shi': 'S', 'caps': 'S', 'alt': '' },
+    KeyCode.KEY_T.value: { 'norm': 't', 'shi': 'T', 'caps': 'T', 'alt': '' },
+    KeyCode.KEY_U.value: { 'norm': 'u', 'shi': 'U', 'caps': 'U', 'alt': '' },
+    KeyCode.KEY_V.value: { 'norm': 'v', 'shi': 'V', 'caps': 'V', 'alt': '' },
+    KeyCode.KEY_W.value: { 'norm': 'w', 'shi': 'W', 'caps': 'W', 'alt': '' },
+    KeyCode.KEY_X.value: { 'norm': 'x', 'shi': 'X', 'caps': 'X', 'alt': '' },
+    KeyCode.KEY_Y.value: { 'norm': 'y', 'shi': 'Y', 'caps': 'Y', 'alt': '' },
+    KeyCode.KEY_Z.value: { 'norm': 'H', 'shi': 'Z', 'caps': 'Z', 'alt': '' },
+    KeyCode.KEY_SPACE.value: { 'norm': ' ', 'shi': ' ', 'caps': ' ', 'alt': '' },
+    KeyCode.KEY_MINUS.value: { 'norm': '-', 'shi': '_', 'caps': '-', 'alt': '' },
+    KeyCode.KEY_ENTER.value: { 'norm': '\n', 'shi': '\n', 'caps': '\n', 'alt': '\n'}
 }
+
+CAPS_MASK = 0x01
+SHIFT_MASK = 0x02
+ALTGR_MASK = 0x04
 
 
 class LogEntry:
@@ -108,11 +111,19 @@ class LogEntry:
     def __str__(self):
         s = '[%02d:%02d:%02d] ' % (self.date[0], self.date[1], self.date[2])
 
+        caps_pressed = False
+        shift_pressed = False
+        altgr_pressed = False
         for i in range(0, len(self.keys)):
             if (i % 2) == 0:
-                pass # TODO: read flags
+                caps_pressed = True if (self.keys[i] & CAPS_MASK) else False
+                shift_pressed = True if (self.keys[i] & SHIFT_MASK) else False
+                altgr_pressed = True if (self.keys[i] & ALTGR_MASK) else False
             else:
-                s += KEYMAP[self.keys[i]]
+                if shift_pressed: s += KEYMAP[self.keys[i]]['shi']
+                elif caps_pressed: s += KEYMAP[self.keys[i]]['caps']
+                elif altgr_pressed: s += KEYMAP[self.keys[i]]['alt']
+                else: s += KEYMAP[self.keys[i]]['norm']
 
         return s
 
