@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <linux/input.h>
 #include <sys/select.h>
 #include <sys/stat.h>
@@ -115,8 +116,11 @@ static void destroy_ctx(x9kl_ctx_t *ctx) {
   }
 }
 
-static bool should_add_header() {
-  return false; // TODO
+static bool should_add_header(const char *filename) {
+  std::ifstream file{filename};
+
+  file.seekg(0, file.end);
+  return !file.tellg();
 }
 
 static void add_header_info(std::ofstream &file) {
@@ -145,20 +149,22 @@ static void add_data(const std::vector<uint16_t> &data, std::ofstream &file) {
 
 static void write_buffer_to_log(const std::vector<uint16_t> &buffer) {
   struct tm *time;
-  char date[9]{0};
+  char filename[PATH_MAX]{0};
 
   {
     std::time_t raw_time;
+    char date[9]{0};
 
     std::time(&raw_time);
     time = std::localtime(&raw_time);
     std::strftime(date, sizeof(date), "%d%m%Y", time);
+
+    std::snprintf(filename, sizeof(filename), "%s/log_%s", LOGS_DIR, date);
   }
 
-  std::ofstream log_file{std::string{LOGS_DIR} + "/log_" + date,
-                         std::ios::binary | std::ios::app};
+  std::ofstream log_file{filename, std::ios::binary | std::ios::app};
 
-  if (should_add_header()) {
+  if (should_add_header(filename)) {
     add_header_info(log_file);
   }
 
