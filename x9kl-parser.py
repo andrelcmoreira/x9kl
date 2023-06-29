@@ -124,19 +124,14 @@ class LogEntry:
     def __str__(self):
         s = '[%02d:%02d:%02d] ' % (self.date[0], self.date[1], self.date[2])
 
-        caps_pressed = False
-        shift_pressed = False
-        altgr_pressed = False
-        for i in range(0, len(self.keys)):
-            if (i % 2) == 0:
-                caps_pressed = True if (self.keys[i] & CAPS_MASK) else False
-                shift_pressed = True if (self.keys[i] & SHIFT_MASK) else False
-                altgr_pressed = True if (self.keys[i] & ALTGR_MASK) else False
-            else:
-                if shift_pressed: s += KEYMAP[self.keys[i]]['s']
-                elif caps_pressed: s += KEYMAP[self.keys[i]]['c']
-                elif altgr_pressed: s += KEYMAP[self.keys[i]]['a']
-                else: s += KEYMAP[self.keys[i]]['n']
+        for i in range(0, len(self.keys), 2):
+            flags = self.keys[i]
+            key = self.keys[i + 1]
+            
+            if flags & CAPS_MASK: s += KEYMAP[self.keys[key]]['c']
+            if flags & SHIFT_MASK: s += KEYMAP[self.keys[key]]['s']
+            if flags & ALTGR_MASK: s += KEYMAP[self.keys[key]]['a']
+            else: s += KEYMAP[self.keys[key]]['n']
 
         return s
 
