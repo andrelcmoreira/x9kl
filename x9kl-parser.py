@@ -124,14 +124,14 @@ class LogEntry:
     def __str__(self):
         s = '[%02d:%02d:%02d] ' % (self.date[0], self.date[1], self.date[2])
 
-        for i in range(0, len(self.keys), 2):
+        for i in range(0, len(self.keys) - 1, 2):
             flags = self.keys[i]
             key = self.keys[i + 1]
-            
-            if flags & CAPS_MASK: s += KEYMAP[self.keys[key]]['c']
-            if flags & SHIFT_MASK: s += KEYMAP[self.keys[key]]['s']
-            if flags & ALTGR_MASK: s += KEYMAP[self.keys[key]]['a']
-            else: s += KEYMAP[self.keys[key]]['n']
+
+            if flags & CAPS_MASK: s += KEYMAP[key]['c']
+            if flags & SHIFT_MASK: s += KEYMAP[key]['s']
+            if flags & ALTGR_MASK: s += KEYMAP[key]['a']
+            else: s += KEYMAP[key]['n']
 
         return s
 
@@ -139,11 +139,9 @@ class LogEntry:
 def sort_keys(keys):
     sorted_keys = []
 
-    for i in range(0, len(keys)):
-        if (i % 2) == 0:
-            sorted_keys.insert(i + 1, keys[i])
-        else:
-            sorted_keys.insert(i - 1, keys[i])
+    for i in range(0, len(keys), 2):
+        sorted_keys.append(keys[i+1])
+        sorted_keys.append(keys[i])
 
     return sorted_keys
 
