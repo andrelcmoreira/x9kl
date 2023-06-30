@@ -94,7 +94,7 @@ KEYMAP = {
     KeyCode.KEY_W.value: { 'n': 'w', 's': 'W', 'c': 'W', 'a': '?' },
     KeyCode.KEY_X.value: { 'n': 'x', 's': 'X', 'c': 'X', 'a': '' },
     KeyCode.KEY_Y.value: { 'n': 'y', 's': 'Y', 'c': 'Y', 'a': '' },
-    KeyCode.KEY_Z.value: { 'n': 'H', 's': 'Z', 'c': 'Z', 'a': '' },
+    KeyCode.KEY_Z.value: { 'n': 'z', 's': 'Z', 'c': 'Z', 'a': '' },
     KeyCode.KEY_SPACE.value: { 'n': ' ', 's': ' ', 'c': ' ', 'a': '' },
     KeyCode.KEY_MINUS.value: { 'n': '-', 's': '_', 'c': '-', 'a': '' },
     KeyCode.KEY_ENTER.value: { 'n': '\n', 's': '\n', 'c': '\n', 'a': '\n'},
@@ -129,8 +129,8 @@ class LogEntry:
             key = self.keys[i + 1]
 
             if flags & CAPS_MASK: s += KEYMAP[key]['c']
-            if flags & SHIFT_MASK: s += KEYMAP[key]['s']
-            if flags & ALTGR_MASK: s += KEYMAP[key]['a']
+            elif flags & SHIFT_MASK: s += KEYMAP[key]['s']
+            elif flags & ALTGR_MASK: s += KEYMAP[key]['a']
             else: s += KEYMAP[key]['n']
 
         return s
