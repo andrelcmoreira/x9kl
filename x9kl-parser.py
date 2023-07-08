@@ -136,7 +136,7 @@ def sort_keys(keys):
     sorted_keys = []
 
     for i in range(0, len(keys), 2):
-        sorted_keys.append(keys[i+1])
+        sorted_keys.append(keys[i + 1])
         sorted_keys.append(keys[i])
 
     return sorted_keys
