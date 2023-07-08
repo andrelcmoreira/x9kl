@@ -1,4 +1,5 @@
 from argparse import ArgumentParser
+from dataclasses import dataclass
 from sys import argv
 from enum import Enum
 
@@ -52,7 +53,6 @@ class KeyCode(Enum):
     KEY_102ND = 86
     KEY_RIGHTBRACE = 27
     KEY_BACKSLASH = 43
-
 
 # 'n' = normal
 # 's' = shift
@@ -109,17 +109,14 @@ KEYMAP = {
     KeyCode.KEY_BACKSLASH.value: { 'n': ']', 's': '}', 'c': ']', 'a': '' }
 }
 
-
 CAPS_MASK = 0x01
 SHIFT_MASK = 0x02
 ALTGR_MASK = 0x04
 
-
+@dataclass
 class LogEntry:
-
-    def __init__(self, date, keys):
-        self.date = date
-        self.keys = keys
+    date: str
+    keys: list
 
     def __str__(self):
         s = '[%02d:%02d:%02d] ' % (self.date[0], self.date[1], self.date[2])
@@ -135,7 +132,6 @@ class LogEntry:
 
         return s
 
-
 def sort_keys(keys):
     sorted_keys = []
 
@@ -144,7 +140,6 @@ def sort_keys(keys):
         sorted_keys.append(keys[i])
 
     return sorted_keys
-
 
 def parse_keys(log_file):
     with open(log_file, 'rb') as f:
@@ -160,11 +155,9 @@ def parse_keys(log_file):
             else:
                 buffer.append(key)
 
-
 def main(log_file):
     for key in parse_keys(log_file):
         print(key)
-
 
 def parse_args():
     parser = ArgumentParser(prog=argv[0])
