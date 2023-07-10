@@ -18,6 +18,7 @@ class KeyCode(Enum):
     KEY_A = 30
     KEY_B = 48
     KEY_C = 46
+    KEY_CEDILLA = 39
     KEY_D = 32
     KEY_E = 18
     KEY_F = 33
@@ -46,7 +47,7 @@ class KeyCode(Enum):
     KEY_MINUS = 12
     KEY_COMMA = 51
     KEY_DOT = 52
-    KEY_SEMICOLON = 39
+    KEY_SEMICOLON = 53
     KEY_EQUAL = 117
     KEY_RO = 89
     KEY_GRAVE = 41
@@ -72,6 +73,7 @@ KEYMAP = {
     KeyCode.KEY_A.value: { 'n': 'a', 's': 'A', 'c': 'A', 'a': '' },
     KeyCode.KEY_B.value: { 'n': 'b', 's': 'B', 'c': 'B', 'a': '' },
     KeyCode.KEY_C.value: { 'n': 'c', 's': 'C', 'c': 'C', 'a': '' },
+    KeyCode.KEY_CEDILLA.value: { 'n': 'ç', 's': '', 'c': 'Ç', 'a': '' },
     KeyCode.KEY_D.value: { 'n': 'd', 's': 'D', 'c': 'D', 'a': '' },
     KeyCode.KEY_E.value: { 'n': 'e', 's': 'E', 'c': 'E', 'a': '' },
     KeyCode.KEY_F.value: { 'n': 'f', 's': 'F', 'c': 'F', 'a': '' },
@@ -156,6 +158,8 @@ def parse_keys(log_file):
                 buffer.append(key)
 
 def main(log_file):
+    val = True
+
     for key in parse_keys(log_file):
         print(key)
 
