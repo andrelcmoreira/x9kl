@@ -158,15 +158,14 @@ def parse_keys(log_file):
                 buffer.append(key)
 
 def main(log_file):
-    val = True
-
     for key in parse_keys(log_file):
         print(key)
 
 def parse_args():
     parser = ArgumentParser(prog=argv[0])
 
-    parser.add_argument('-f', '--log-file', help='file containing x9kl logs')
+    parser.add_argument('-f', '--log-file', metavar='file',
+                        help='file containing x9kl logs')
 
     # no arguments provided
     if not len(argv):
