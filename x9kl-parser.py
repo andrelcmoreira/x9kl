@@ -121,18 +121,18 @@ class LogEntry:
     keys: list
 
     def __str__(self):
-        s = '[%02d:%02d:%02d] ' % (self.date[0], self.date[1], self.date[2])
+        log = '[%02d:%02d:%02d] ' % (self.date[0], self.date[1], self.date[2])
 
         for i in range(0, len(self.keys) - 1, 2):
             flags = self.keys[i]
             key = self.keys[i + 1]
 
-            if flags & CAPS_MASK: s += KEYMAP[key]['c']
-            elif flags & SHIFT_MASK: s += KEYMAP[key]['s']
-            elif flags & ALTGR_MASK: s += KEYMAP[key]['a']
-            else: s += KEYMAP[key]['n']
+            if flags & CAPS_MASK: log += KEYMAP[key]['c']
+            elif flags & SHIFT_MASK: log += KEYMAP[key]['log']
+            elif flags & ALTGR_MASK: log += KEYMAP[key]['a']
+            else: log += KEYMAP[key]['n']
 
-        return s
+        return log
 
 def sort_keys(keys):
     sorted_keys = []
@@ -168,7 +168,7 @@ def parse_args():
                         help='file containing x9kl logs')
 
     # no arguments provided
-    if not len(argv):
+    if len(argv) == 1:
         parser.print_help()
         return None
 
