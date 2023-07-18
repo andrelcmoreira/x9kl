@@ -128,7 +128,7 @@ class LogEntry:
             key = self.keys[i + 1]
 
             if flags & CAPS_MASK: log += KEYMAP[key]['c']
-            elif flags & SHIFT_MASK: log += KEYMAP[key]['log']
+            elif flags & SHIFT_MASK: log += KEYMAP[key]['s']
             elif flags & ALTGR_MASK: log += KEYMAP[key]['a']
             else: log += KEYMAP[key]['n']
 
