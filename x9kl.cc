@@ -137,14 +137,16 @@ static void add_timestamp(const tm *time, std::ofstream &file) {
   timestamp.emplace_back((time->tm_hour << 8) | time->tm_min);
   timestamp.emplace_back((time->tm_sec << 8) | 0xff);
 
-  file.write((const char *)timestamp.data(), timestamp.size() * 2);
+  file.write(reinterpret_cast<const char *>(timestamp.data()),
+             timestamp.size() * 2);
 }
 
 static void add_data(const std::vector<uint16_t> &data, std::ofstream &file) {
   std::vector<uint16_t> log_entry;
 
   log_entry.insert(log_entry.end(), data.begin(), data.end());
-  file.write((const char *)log_entry.data(), log_entry.size() * 2);
+  file.write(reinterpret_cast<const char *>(log_entry.data()),
+             log_entry.size() * 2);
 }
 
 static void write_buffer_to_log(const std::vector<uint16_t> &buffer) {
