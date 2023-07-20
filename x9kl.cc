@@ -124,6 +124,7 @@ static bool should_add_header(const char *filename) {
 }
 
 static void add_header_info(std::ofstream &file) {
+  (void)file;
   // TODO
   //   - write locale=X
   //   - write username=Y
