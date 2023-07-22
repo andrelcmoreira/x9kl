@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <linux/input.h>
+#include <regex.h>
 #include <sys/select.h>
 #include <sys/stat.h>
 #include <time.h>
@@ -11,7 +12,6 @@
 #include <cstring>
 #include <ctime>
 #include <fstream>
-#include <regex>
 #include <string>
 #include <vector>
 
@@ -51,21 +51,22 @@ static void sig_handler(int sig_num) {
 }
 
 static std::vector<std::string> get_event_files(void) {
+  std::string pattern{"H: Handlers=sysrq kbd.*(event[0-9]{1,2})"};
+  std::ifstream file{"/proc/bus/input/devices"};
   std::vector<std::string> content;
+  std::string line, event_file;
+  regmatch_t match[2];
+  regex_t regex;
 
-  {
-    std::ifstream file{"/proc/bus/input/devices"};
-    std::regex kb_regex{"H: Handlers=sysrq kbd.*(event\\d{1,2})"};
-    std::string line;
+  regcomp(&regex, pattern.c_str(), REG_EXTENDED);
 
-    while (std::getline(file, line)) {
-      std::smatch match;
+  while (std::getline(file, line)) {
+    if (!regexec(&regex, line.c_str(), 2, match, 0)) {
+      event_file.assign(&line[match[1].rm_so],
+                        (match[1].rm_eo - match[1].rm_so));
+      content.emplace_back(event_file);
 
-      if (std::regex_search(line, match, kb_regex)) {
-        X9KL_DEBUG("keyboard found, event file: '%s'\n",
-                   match[1].str().c_str());
-        content.emplace_back(match[1]);
-      }
+      X9KL_DEBUG("keyboard found, event file: '%s'\n", event_file.c_str());
     }
   }
 
