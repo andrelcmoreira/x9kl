@@ -51,22 +51,24 @@ static void sig_handler(int sig_num) {
 }
 
 static std::vector<std::string> get_event_files(void) {
-  std::string pattern{"H: Handlers=sysrq kbd.*(event[0-9]{1,2})"};
-  std::ifstream file{"/proc/bus/input/devices"};
   std::vector<std::string> content;
-  std::string line, event_file;
-  regmatch_t match[2];
   regex_t regex;
 
-  regcomp(&regex, pattern.c_str(), REG_EXTENDED);
+  regcomp(&regex, "H: Handlers=sysrq kbd.*(event[0-9]{1,2})", REG_EXTENDED);
 
-  while (std::getline(file, line)) {
-    if (!regexec(&regex, line.c_str(), 2, match, 0)) {
-      event_file.assign(&line[match[1].rm_so],
-                        (match[1].rm_eo - match[1].rm_so));
-      content.emplace_back(event_file);
+  {
+    std::ifstream file{"/proc/bus/input/devices"};
+    std::string line, event_file;
+    regmatch_t match[2];
 
-      X9KL_DEBUG("keyboard found, event file: '%s'\n", event_file.c_str());
+    while (std::getline(file, line)) {
+      if (!regexec(&regex, line.c_str(), 2, match, 0)) {
+        event_file.assign(&line[match[1].rm_so],
+                          (match[1].rm_eo - match[1].rm_so));
+        content.emplace_back(event_file);
+
+        X9KL_DEBUG("keyboard found, event file: '%s'\n", event_file.c_str());
+      }
     }
   }
 
@@ -111,7 +113,7 @@ static int initialize_x9kl(x9kl_ctx_t *ctx) {
   return 0;
 }
 
-static void destroy_ctx(x9kl_ctx_t *ctx) {
+static void destroy_ctx(const x9kl_ctx_t *ctx) {
   for (auto &fd : ctx->kb_fds) {
     close(fd);
   }
