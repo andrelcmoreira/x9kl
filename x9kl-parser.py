@@ -1,7 +1,8 @@
 from argparse import ArgumentParser
 from dataclasses import dataclass
-from sys import argv
 from enum import Enum
+from sys import argv
+
 
 # https://github.com/torvalds/linux/blob/master/include/uapi/linux/input-event-codes.h
 class KeyCode(Enum):
@@ -54,6 +55,7 @@ class KeyCode(Enum):
     KEY_102ND = 86
     KEY_RIGHTBRACE = 27
     KEY_BACKSLASH = 43
+
 
 # 'n' = normal
 # 's' = shift
@@ -111,9 +113,6 @@ KEYMAP = {
     KeyCode.KEY_BACKSLASH.value: { 'n': ']', 's': '}', 'c': ']', 'a': '' }
 }
 
-CAPS_MASK = 0x01
-SHIFT_MASK = 0x02
-ALTGR_MASK = 0x04
 
 @dataclass
 class LogEntry:
@@ -121,18 +120,23 @@ class LogEntry:
     keys: list
 
     def __str__(self):
+        caps_mask = 0x01
+        shift_mask = 0x02
+        altgr_mask = 0x04
+
         log = '[%02d:%02d:%02d] ' % (self.date[0], self.date[1], self.date[2])
 
         for i in range(0, len(self.keys) - 1, 2):
             flags = self.keys[i]
             key = self.keys[i + 1]
 
-            if flags & CAPS_MASK: log += KEYMAP[key]['c']
-            elif flags & SHIFT_MASK: log += KEYMAP[key]['s']
-            elif flags & ALTGR_MASK: log += KEYMAP[key]['a']
+            if flags & caps_mask: log += KEYMAP[key]['c']
+            elif flags & shift_mask: log += KEYMAP[key]['s']
+            elif flags & altgr_mask: log += KEYMAP[key]['a']
             else: log += KEYMAP[key]['n']
 
         return log
+
 
 def sort_keys(keys):
     sorted_keys = []
@@ -142,6 +146,7 @@ def sort_keys(keys):
         sorted_keys.append(keys[i])
 
     return sorted_keys
+
 
 def parse_keys(log_file):
     with open(log_file, 'rb') as f:
@@ -157,9 +162,11 @@ def parse_keys(log_file):
             else:
                 buffer.append(key)
 
+
 def main(log_file):
     for key in parse_keys(log_file):
         print(key)
+
 
 def parse_args():
     parser = ArgumentParser(prog=argv[0])
@@ -173,6 +180,7 @@ def parse_args():
         return None
 
     return parser.parse_args()
+
 
 if __name__ == "__main__":
     args = parse_args()
