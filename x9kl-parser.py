@@ -124,16 +124,23 @@ class LogEntry:
         shift_mask = 0x02
         altgr_mask = 0x04
 
-        log = '[%02d:%02d:%02d] ' % (self.date[0], self.date[1], self.date[2])
+        log = f'[{self.date[0]:02d}:{self.date[1]:02d}:{self.date[2]:02d}] '
 
         for i in range(0, len(self.keys) - 1, 2):
             flags = self.keys[i]
             key = self.keys[i + 1]
 
-            if flags & caps_mask: log += KEYMAP[key]['c']
-            elif flags & shift_mask: log += KEYMAP[key]['s']
-            elif flags & altgr_mask: log += KEYMAP[key]['a']
-            else: log += KEYMAP[key]['n']
+            try:
+                if flags & caps_mask:
+                    log += KEYMAP[key]['c']
+                elif flags & shift_mask:
+                    log += KEYMAP[key]['s']
+                elif flags & altgr_mask:
+                    log += KEYMAP[key]['a']
+                else:
+                    log += KEYMAP[key]['n']
+            except KeyError:
+                pass # TODO: handle error
 
         return log
 

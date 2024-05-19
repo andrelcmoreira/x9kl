@@ -8,8 +8,8 @@
 #include <time.h>
 #include <unistd.h>
 
-#include <csignal>
 #include <cstdint>
+#include <csignal>
 #include <cstring>
 #include <ctime>
 #include <fstream>
