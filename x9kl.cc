@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include <csignal>
+#include <cstdint>
 #include <cstring>
 #include <ctime>
 #include <fstream>
